@@ -1,6 +1,7 @@
 package xyz.ruin.droidref
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
@@ -22,7 +23,6 @@ import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.core.graphics.rotationMatrix
 import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.ViewModelProvider
 import com.github.kittinunf.fuel.core.FuelManager
@@ -33,7 +33,6 @@ import com.xiaopo.flying.sticker.iconEvents.DeleteIconEvent
 import com.xiaopo.flying.sticker.iconEvents.FlipHorizontallyEvent
 import com.xiaopo.flying.sticker.iconEvents.FlipVerticallyEvent
 import com.xiaopo.flying.sticker.iconEvents.ZoomIconEvent
-import kotlinx.android.synthetic.main.activity_main.view.*
 import timber.log.Timber
 import xyz.ruin.droidref.databinding.ActivityMainBinding
 import java.io.File
@@ -241,7 +240,11 @@ class MainActivity : AppCompatActivity() {
             val cursor: Cursor? = contentResolver.query(uri, null, null, null, null)
             try {
                 if (cursor != null && cursor.moveToFirst()) {
-                    result = cursor.getString(cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME))
+                    var cursorColumnIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (cursorColumnIndex < 0) {
+                        cursorColumnIndex = 0
+                    }
+                    result = cursor.getString(cursorColumnIndex)
                 }
             } finally {
                 cursor?.close()
@@ -454,18 +457,19 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    internal class FetchImageFromLinkTask(val text: String, val context: MainActivity) :
-        AsyncTask<Void, Void, Void>() {
+    internal class FetchImageFromLinkTask(val text: String, val context: MainActivity) : AsyncTask<Void, Void, Void>() {
+        @SuppressLint("StaticFieldLeak")
+        val progressBarHolder: View = context.findViewById(R.id.progressBarHolder)
+
         override fun onPreExecute() {
             super.onPreExecute()
-            context.binding.activityMain.progressBarHolder.visibility = View.VISIBLE
+            progressBarHolder.visibility = View.VISIBLE
         }
 
         override fun doInBackground(vararg params: Void?): Void? {
             try {
                 val fuel = FuelManager()
-                fuel.baseHeaders =
-                    mapOf(Headers.USER_AGENT to "Mozilla/5.0 (X11; Linux x86_64; rv:76.0) Gecko/20100101 Firefox/76.0")
+                fuel.baseHeaders = mapOf(Headers.USER_AGENT to "Mozilla/5.0 (X11; Linux x86_64; rv:76.0) Gecko/20100101 Firefox/76.0")
 
                 fuel.head(text).response { _, head, result ->
                     result.fold({
@@ -473,7 +477,7 @@ class MainActivity : AppCompatActivity() {
                         if (!contentType.any { it.startsWith("image/") }) {
                             Toast.makeText(context, "Link is not an image", Toast.LENGTH_LONG)
                                 .show()
-                            context.binding.activityMain.progressBarHolder.visibility = View.GONE
+                            progressBarHolder.visibility = View.GONE
                             return@response
                         }
 
@@ -482,7 +486,7 @@ class MainActivity : AppCompatActivity() {
                                 body.fold({
                                     val bitmap = BitmapFactory.decodeByteArray(it, 0, it.size)
                                     context.doAddSticker(bitmap)
-                                    context.binding.activityMain.progressBarHolder.visibility =
+                                    progressBarHolder.visibility =
                                         View.GONE
                                 }, {
                                     Toast.makeText(
@@ -491,13 +495,13 @@ class MainActivity : AppCompatActivity() {
                                         Toast.LENGTH_LONG
                                     )
                                         .show()
-                                    context.binding.activityMain.progressBarHolder.visibility =
+                                    progressBarHolder.visibility =
                                         View.GONE
                                     Timber.e(it)
                                 })
                             }
                     }, {
-                        context.binding.activityMain.progressBarHolder.visibility = View.GONE
+                        progressBarHolder.visibility = View.GONE
                         Toast.makeText(context, "Failed to download image", Toast.LENGTH_LONG)
                             .show()
                         Timber.e(it)
@@ -506,7 +510,7 @@ class MainActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 Timber.e(e)
                 Toast.makeText(context, "Invalid link", Toast.LENGTH_LONG).show()
-                context.binding.activityMain.progressBarHolder.visibility = View.GONE
+                progressBarHolder.visibility = View.GONE
             }
             return null
         }

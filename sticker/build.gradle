@@ -1,15 +1,13 @@
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
-apply plugin: 'kotlin-android-extensions'
 apply plugin: 'kotlin-kapt'
 
 android {
-    compileSdkVersion 29
-    buildToolsVersion "30.0.3"
+    compileSdk 35
 
     defaultConfig {
         minSdkVersion 23
-        targetSdkVersion 29
+        targetSdk 35
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
@@ -25,16 +23,21 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
-    buildFeatures {
-        dataBinding = true
+    kotlinOptions {
+        jvmTarget = "1.8"
     }
+    buildFeatures {
+        dataBinding true
+        viewBinding true
+    }
+    namespace 'com.xiaopo.flying.sticker'
 }
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation 'androidx.annotation:annotation:1.1.0'
-    implementation 'androidx.appcompat:appcompat:1.2.0'
-    implementation "androidx.core:core-ktx:1.3.2"
+    implementation 'androidx.annotation:annotation:1.9.1'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation "androidx.core:core-ktx:1.15.0"
     implementation "org.msgpack:msgpack-core:0.8.22"
 
     def lifecycle_version = "2.2.0"
