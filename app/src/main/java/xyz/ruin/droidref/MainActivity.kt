@@ -419,28 +419,68 @@ class MainActivity : AppCompatActivity() {
         binding.buttonDuplicate.setOnClickListener { stickerViewModel.duplicateCurrentSticker() }
 
         binding.buttonLock.setOnCheckedChangeListener { _, isToggled ->
-            stickerViewModel.isLocked.value = isToggled
+            releaseEditMode()
+            if (isToggled) {
+                setLockedEditMode()
+            }
         }
 
         binding.buttonCrop.setOnCheckedChangeListener { _, isToggled ->
-            stickerViewModel.isCropActive.value = isToggled
-        }
-
-        binding.buttonResetZoom.setOnClickListener {
-            stickerViewModel.resetCurrentStickerZoom()
+            releaseEditMode()
+            if (isToggled) {
+                setCropEditMode()
+            }
         }
 
         binding.buttonResetCrop.setOnClickListener {
             stickerViewModel.resetCurrentStickerCropping()
         }
 
+        binding.buttonRotate.setOnCheckedChangeListener { _, isToggled ->
+            releaseEditMode()
+            if (isToggled) {
+                setRotationEditMode()
+            }
+        }
+
+        binding.buttonRotate.setOnLongClickListener {
+            stickerViewModel.resetCurrentStickerRotation()
+            true
+        }
+
+        binding.buttonResetZoom.setOnClickListener {
+            stickerViewModel.resetCurrentStickerZoom()
+        }
+
         binding.buttonHideShowUI.setOnCheckedChangeListener { _, isToggled ->
             setUIVisibility(isToggled)
         }
-        binding.buttonRotate.setOnLongClickListener {
-            stickerViewModel.resetCurrentStickerRotation();
-            true
-        }
+    }
+
+    private fun releaseEditMode() {
+        binding.buttonLock.isChecked = false
+        stickerViewModel.isLocked.value = false
+
+        binding.buttonCrop.isChecked = false
+        stickerViewModel.isCropActive.value = false
+
+        binding.buttonRotate.isChecked = false
+        stickerViewModel.rotationEnabled.value = false
+    }
+
+    private fun setLockedEditMode() {
+        binding.buttonLock.isChecked = true
+        stickerViewModel.isLocked.value = true
+    }
+
+    private fun setCropEditMode() {
+        binding.buttonCrop.isChecked = true
+        stickerViewModel.isCropActive.value = true
+    }
+
+    private fun setRotationEditMode() {
+        binding.buttonRotate.isChecked = true
+        stickerViewModel.rotationEnabled.value = true
     }
 
     private fun setUIVisibility(isToggled: Boolean) {
