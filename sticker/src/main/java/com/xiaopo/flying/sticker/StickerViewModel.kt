@@ -517,6 +517,8 @@ open class StickerViewModel :
                     BitmapStickerIcon.LEFT_BOTTOM -> BitmapStickerIcon.RIGHT_TOP
                     BitmapStickerIcon.RIGHT_TOP -> BitmapStickerIcon.LEFT_BOTTOM
                     BitmapStickerIcon.RIGHT_BOTTOM -> BitmapStickerIcon.LEFT_TOP
+                    BitmapStickerIcon.LEFT_CENTER -> BitmapStickerIcon.RIGHT_CENTER
+                    BitmapStickerIcon.RIGHT_CENTER -> BitmapStickerIcon.LEFT_CENTER
                     else -> gravity
                 }
             } else {
@@ -525,6 +527,8 @@ open class StickerViewModel :
                     BitmapStickerIcon.LEFT_BOTTOM -> BitmapStickerIcon.RIGHT_BOTTOM
                     BitmapStickerIcon.RIGHT_TOP -> BitmapStickerIcon.LEFT_TOP
                     BitmapStickerIcon.RIGHT_BOTTOM -> BitmapStickerIcon.LEFT_BOTTOM
+                    BitmapStickerIcon.LEFT_CENTER -> BitmapStickerIcon.RIGHT_CENTER
+                    BitmapStickerIcon.RIGHT_CENTER -> BitmapStickerIcon.LEFT_CENTER
                     else -> gravity
                 }
             }
@@ -577,6 +581,14 @@ open class StickerViewModel :
             BitmapStickerIcon.RIGHT_BOTTOM -> {
                 cropped.right = Math.max(px.toFloat(), cropped.left)
                 cropped.bottom = Math.max(py.toFloat(), cropped.top)
+            }
+            BitmapStickerIcon.LEFT_CENTER -> {
+                cropped.left = Math.min(px.toFloat(), cropped.right)
+                cropped.bottom += cropped.height() * 0.5f
+            }
+            BitmapStickerIcon.RIGHT_CENTER -> {
+                cropped.right = Math.max(px.toFloat(), cropped.left)
+                cropped.bottom += cropped.height() * 0.5f
             }
         }
         sticker.setCroppedBounds(cropped)

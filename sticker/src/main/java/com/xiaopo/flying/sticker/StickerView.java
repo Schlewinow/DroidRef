@@ -13,7 +13,6 @@ import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.view.ViewCompat;
-import androidx.databinding.ObservableArrayList;
 import androidx.databinding.ObservableField;
 
 import com.xiaopo.flying.sticker.iconEvents.CropIconEvent;
@@ -28,8 +27,6 @@ import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
-import timber.log.Timber;
 
 /**
  * Sticker View
@@ -262,6 +259,14 @@ public class StickerView extends FrameLayout {
 
                         case BitmapStickerIcon.RIGHT_BOTTOM:
                             configIconMatrix(icon, x4, y4, rotation);
+                            break;
+
+                        case BitmapStickerIcon.LEFT_CENTER:
+                            configIconMatrix(icon, (x1 + x3) / 2, (y1 + y3) / 2, rotation);
+                            break;
+
+                        case BitmapStickerIcon.RIGHT_CENTER:
+                            configIconMatrix(icon, (x2 + x4) / 2, (y2 + y4) / 2, rotation);
                             break;
                     }
                     icon.draw(canvas, iconPaint);

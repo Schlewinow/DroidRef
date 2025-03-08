@@ -32,6 +32,8 @@ import com.xiaopo.flying.sticker.StickerView.OnStickerOperationListener
 import com.xiaopo.flying.sticker.iconEvents.DeleteIconEvent
 import com.xiaopo.flying.sticker.iconEvents.FlipHorizontallyEvent
 import com.xiaopo.flying.sticker.iconEvents.FlipVerticallyEvent
+import com.xiaopo.flying.sticker.iconEvents.RotateLeftEvent
+import com.xiaopo.flying.sticker.iconEvents.RotateRightEvent
 import com.xiaopo.flying.sticker.iconEvents.ZoomIconEvent
 import timber.log.Timber
 import xyz.ruin.droidref.databinding.ActivityMainBinding
@@ -59,7 +61,7 @@ class MainActivity : AppCompatActivity() {
         binding.executePendingBindings()
         binding.lifecycleOwner = this
 
-        setupIcons()
+        setupStickerIcons()
         setupButtons()
 
         handleIntent(intent)
@@ -117,7 +119,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupIcons() {
+    private fun setupStickerIcons() {
         //currently you can config your own icons and icon event
         //the event you can custom
         val deleteIcon = BitmapStickerIcon(
@@ -128,6 +130,7 @@ class MainActivity : AppCompatActivity() {
             BitmapStickerIcon.LEFT_TOP
         )
         deleteIcon.iconEvent = DeleteIconEvent()
+
         val zoomIcon = BitmapStickerIcon(
             ContextCompat.getDrawable(
                 this,
@@ -136,6 +139,7 @@ class MainActivity : AppCompatActivity() {
             BitmapStickerIcon.RIGHT_BOTTOM
         )
         zoomIcon.iconEvent = ZoomIconEvent()
+
         val flipIcon = BitmapStickerIcon(
             ContextCompat.getDrawable(
                 this,
@@ -144,6 +148,7 @@ class MainActivity : AppCompatActivity() {
             BitmapStickerIcon.RIGHT_TOP
         )
         flipIcon.iconEvent = FlipHorizontallyEvent()
+
         val flipVerticallyIcon = BitmapStickerIcon(
             ContextCompat.getDrawable(
                 this,
@@ -152,11 +157,32 @@ class MainActivity : AppCompatActivity() {
             BitmapStickerIcon.LEFT_BOTTOM
         )
         flipVerticallyIcon.iconEvent = FlipVerticallyEvent()
+
+        val rotateLeftIcon = BitmapStickerIcon(
+            ContextCompat.getDrawable(
+                this,
+                com.xiaopo.flying.sticker.R.drawable.icon_rotate_left
+            ),
+            BitmapStickerIcon.LEFT_CENTER
+        )
+        rotateLeftIcon.iconEvent = RotateLeftEvent()
+
+        val rotateRightIcon = BitmapStickerIcon(
+            ContextCompat.getDrawable(
+                this,
+                com.xiaopo.flying.sticker.R.drawable.icon_rotate_right
+            ),
+            BitmapStickerIcon.RIGHT_CENTER
+        )
+        rotateRightIcon.iconEvent = RotateRightEvent()
+
         stickerViewModel.icons.value = arrayListOf(
             deleteIcon,
             zoomIcon,
             flipIcon,
-            flipVerticallyIcon
+            flipVerticallyIcon,
+            rotateLeftIcon,
+            rotateRightIcon
         )
         stickerViewModel.activeIcons.value = stickerViewModel.icons.value
     }
