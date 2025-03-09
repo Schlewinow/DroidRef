@@ -29,6 +29,7 @@ open class StickerViewModel :
 
     var stickers: MutableLiveData<ArrayList<Sticker>> = MutableLiveData(ArrayList())
     var icons: MutableLiveData<ArrayList<BitmapStickerIcon>> = MutableLiveData(ArrayList())
+    var rotateIcons: MutableLiveData<ArrayList<BitmapStickerIcon>> = MutableLiveData(ArrayList())
     var activeIcons: MutableLiveData<List<BitmapStickerIcon>> = MutableLiveData(ArrayList(4))
     var handlingSticker: MutableLiveData<Sticker?> = MutableLiveData(null)
 
@@ -422,13 +423,17 @@ open class StickerViewModel :
                 val newDistance = StickerMath.calculateDistanceScaled(event, canvasMatrix.value!!.getMatrix())
                 val newRotation = StickerMath.calculateRotation(event)
                 moveMatrix.set(stickerWorldMatrix)
-                moveMatrix.postScale(
-                    newDistance / oldDistance, newDistance / oldDistance, midPoint.x,
-                    midPoint.y
-                )
-                if (rotationEnabled.value == true) {
+
+                if (rotationEnabled.value == false) {
+                    moveMatrix.postScale(
+                        newDistance / oldDistance, newDistance / oldDistance, midPoint.x,
+                        midPoint.y
+                    )
+                }
+                else {
                     moveMatrix.postRotate(newRotation - oldRotation, midPoint.x, midPoint.y)
                 }
+
                 handlingSticker.value!!.setMatrix(moveMatrix)
             }
             ActionMode.ICON -> if (handlingSticker.value != null && currentIcon.value != null) {
@@ -471,15 +476,19 @@ open class StickerViewModel :
                 temp[1]
             )
             moveMatrix.set(stickerWorldMatrix)
-            moveMatrix.postScale(
-                newDistance / oldDistance,
-                newDistance / oldDistance,
-                midPoint.x,
-                midPoint.y
-            )
-            if (rotationEnabled.value == true) {
+
+            if (rotationEnabled.value == false) {
+                moveMatrix.postScale(
+                    newDistance / oldDistance,
+                    newDistance / oldDistance,
+                    midPoint.x,
+                    midPoint.y
+                )
+            }
+            else {
                 moveMatrix.postRotate(newRotation - oldRotation, midPoint.x, midPoint.y)
             }
+
             handlingSticker.value!!.setMatrix(moveMatrix)
         }
     }

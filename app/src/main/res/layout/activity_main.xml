@@ -36,6 +36,7 @@
                 app:gestureDetector="@{viewModel.gestureListener}"
                 app:handlingSticker="@{viewModel.handlingSticker}"
                 app:icons="@{viewModel.icons}"
+                app:rotateIcons="@{viewModel.rotateIcons}"
                 app:isCropActive="@{viewModel.isCropActive}"
                 app:isLocked="@{viewModel.isLocked}"
                 app:mustLockToPan="@{viewModel.mustLockToPan}"

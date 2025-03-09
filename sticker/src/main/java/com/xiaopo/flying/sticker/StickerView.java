@@ -51,6 +51,7 @@ public class StickerView extends FrameLayout {
     private List<Sticker> stickers = new ArrayList<>();
     private final List<BitmapStickerIcon> icons = new ArrayList<>(4);
     private final List<BitmapStickerIcon> cropIcons = new ArrayList<>(4);
+    private final List<BitmapStickerIcon> rotateIcons = new ArrayList<>(2);
     private ObservableField<List<BitmapStickerIcon>> activeIcons = new ObservableField<>(new ArrayList<>(4));
 
     private final Paint borderPaint = new Paint();
@@ -146,6 +147,18 @@ public class StickerView extends FrameLayout {
         icons.add(deleteIcon);
         icons.add(zoomIcon);
         icons.add(flipIcon);
+
+        BitmapStickerIcon rotateDeleteIcon = new BitmapStickerIcon(
+                getContext(), R.drawable.ic_close, BitmapStickerIcon.LEFT_TOP);
+        deleteIcon.setIconEvent(new DeleteIconEvent());
+
+        BitmapStickerIcon rotateIcon = new BitmapStickerIcon(
+                getContext(), R.drawable.ic_scale, BitmapStickerIcon.RIGHT_BOTTOM);
+        zoomIcon.setIconEvent(new ZoomIconEvent());
+
+        rotateIcons.clear();
+        rotateIcons.add(rotateDeleteIcon);
+        rotateIcons.add(rotateIcon);
 
         BitmapStickerIcon cropLeftTop = new BitmapStickerIcon(getContext(), R.drawable.scale_1, BitmapStickerIcon.LEFT_TOP);
         cropLeftTop.setIconEvent(new CropIconEvent(BitmapStickerIcon.LEFT_TOP));
@@ -447,12 +460,9 @@ public class StickerView extends FrameLayout {
     @NonNull
     public StickerView setRotationEnabled(boolean rotationEnabled) {
         this.rotationEnabled = rotationEnabled;
+        updateIcons();
         invalidate();
         return this;
-    }
-
-    public boolean isMustLockToPan() {
-        return mustLockToPan;
     }
 
     public boolean isCropActive() {
@@ -465,6 +475,10 @@ public class StickerView extends FrameLayout {
         updateIcons();
         invalidate();
         return this;
+    }
+
+    public boolean isMustLockToPan() {
+        return mustLockToPan;
     }
 
     @NonNull
@@ -502,11 +516,27 @@ public class StickerView extends FrameLayout {
         invalidate();
     }
 
+    @NonNull
+    public List<BitmapStickerIcon> getRotateIcons() {
+        return rotateIcons;
+    }
+
+    public void setRotateIcons(@NonNull List<BitmapStickerIcon> rotateIcons) {
+        this.rotateIcons.clear();
+        this.rotateIcons.addAll(rotateIcons);
+        updateIcons();
+        invalidate();
+    }
+
     private void updateIcons() {
         this.currentIcon = null;
         if (isCropActive) {
             setActiveIcons(cropIcons);
-        } else {
+        }
+        else if (rotationEnabled) {
+            setActiveIcons(rotateIcons);
+        }
+        else {
             setActiveIcons(icons);
         }
     }

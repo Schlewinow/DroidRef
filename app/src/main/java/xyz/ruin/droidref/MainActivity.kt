@@ -46,7 +46,6 @@ import java.util.*
 class MainActivity : AppCompatActivity() {
     private lateinit var stickerViewModel: StickerViewModel
     private lateinit var binding: ActivityMainBinding
-    private var rotateToastShowed = false;
 
     override fun onCreate(savedInstanceState: Bundle?) {
         Timber.plant(Timber.DebugTree())
@@ -61,7 +60,8 @@ class MainActivity : AppCompatActivity() {
         binding.executePendingBindings()
         binding.lifecycleOwner = this
 
-        setupStickerIcons()
+        setupDefaultStickerIcons()
+        setupRotateStickerIcons()
         setupButtons()
 
         handleIntent(intent)
@@ -119,7 +119,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupStickerIcons() {
+    private fun setupDefaultStickerIcons() {
         //currently you can config your own icons and icon event
         //the event you can custom
         val deleteIcon = BitmapStickerIcon(
@@ -161,7 +161,7 @@ class MainActivity : AppCompatActivity() {
         val rotateLeftIcon = BitmapStickerIcon(
             ContextCompat.getDrawable(
                 this,
-                com.xiaopo.flying.sticker.R.drawable.icon_rotate_left
+                R.drawable.icon_rotate_left
             ),
             BitmapStickerIcon.LEFT_CENTER
         )
@@ -170,7 +170,7 @@ class MainActivity : AppCompatActivity() {
         val rotateRightIcon = BitmapStickerIcon(
             ContextCompat.getDrawable(
                 this,
-                com.xiaopo.flying.sticker.R.drawable.icon_rotate_right
+                R.drawable.icon_rotate_right
             ),
             BitmapStickerIcon.RIGHT_CENTER
         )
@@ -185,6 +185,53 @@ class MainActivity : AppCompatActivity() {
             rotateRightIcon
         )
         stickerViewModel.activeIcons.value = stickerViewModel.icons.value
+    }
+
+    private fun setupRotateStickerIcons() {
+        //currently you can config your own icons and icon event
+        //the event you can custom
+        val deleteIcon = BitmapStickerIcon(
+            ContextCompat.getDrawable(
+                this,
+                com.xiaopo.flying.sticker.R.drawable.sticker_ic_close_white_18dp
+            ),
+            BitmapStickerIcon.LEFT_TOP
+        )
+        deleteIcon.iconEvent = DeleteIconEvent()
+
+        val rotateIcon = BitmapStickerIcon(
+            ContextCompat.getDrawable(
+                this,
+                R.drawable.icon_rotate_circle
+            ),
+            BitmapStickerIcon.RIGHT_BOTTOM
+        )
+        rotateIcon.iconEvent = ZoomIconEvent()
+
+        val rotateLeftIcon = BitmapStickerIcon(
+            ContextCompat.getDrawable(
+                this,
+                R.drawable.icon_rotate_left_2
+            ),
+            BitmapStickerIcon.LEFT_BOTTOM
+        )
+        rotateLeftIcon.iconEvent = RotateLeftEvent()
+
+        val rotateRightIcon = BitmapStickerIcon(
+            ContextCompat.getDrawable(
+                this,
+                R.drawable.icon_rotate_right
+            ),
+            BitmapStickerIcon.RIGHT_TOP
+        )
+        rotateRightIcon.iconEvent = RotateRightEvent()
+
+        stickerViewModel.rotateIcons.value = arrayListOf(
+            deleteIcon,
+            rotateIcon,
+            rotateLeftIcon,
+            rotateRightIcon
+        )
     }
 
     private fun save() {
