@@ -62,7 +62,11 @@ class MainActivity : AppCompatActivity() {
 
         setupDefaultStickerIcons()
         setupRotateStickerIcons()
-        setupButtons()
+        setupTopButtons()
+        setupBottomButtons()
+
+        // When the app starts, set locked edit mode as default.
+        lockEditMode()
 
         handleIntent(intent)
         intent.type = null // Don't run again if rotated/etc.
@@ -232,6 +236,151 @@ class MainActivity : AppCompatActivity() {
             rotateLeftIcon,
             rotateRightIcon
         )
+    }
+
+    private fun setupTopButtons() {
+        binding.buttonOpen.setOnClickListener { load() }
+
+        binding.buttonSave.setOnClickListener { save() }
+
+        binding.buttonSaveAs.setOnClickListener { saveAs() }
+
+        binding.buttonNew.setOnClickListener {
+            AlertDialog.Builder(this)
+                .setIcon(android.R.drawable.ic_dialog_alert)
+                .setTitle("Confirm")
+                .setMessage("Are you sure you want to create a new board?")
+                .setPositiveButton("Yes") { _, _ -> newBoard() }
+                .setNegativeButton("No", null)
+                .show()
+        }
+
+        binding.buttonCropAll.setOnClickListener {
+            AlertDialog.Builder(this)
+                .setIcon(android.R.drawable.ic_dialog_alert)
+                .setTitle("Confirm")
+                .setMessage("Are you sure you want to crop all images? This will permanently modify the images to match their cropped areas, but it can save  space and improve performance.")
+                .setPositiveButton("Yes") { _, _ -> cropAll() }
+                .setNegativeButton("No", null)
+                .show()
+        }
+
+        binding.buttonHideShowUI.setOnCheckedChangeListener { _, isToggled ->
+            setUIVisibility(isToggled)
+        }
+    }
+
+    private fun setupBottomButtons() {
+        binding.buttonAdd.setOnClickListener {
+            addSticker()
+        }
+
+        binding.buttonReset.setOnClickListener {
+            stickerViewModel.resetView()
+        }
+
+        binding.buttonDuplicate.setOnClickListener {
+            stickerViewModel.duplicateCurrentSticker()
+        }
+
+        binding.buttonLock.setOnCheckedChangeListener { _, isToggled ->
+            if (isToggled) {
+                // The change listener is also called if another button is clicked.
+                // So activate this only if the button actually changed its toggle.
+                lockEditMode()
+            }
+            else {
+                if (!binding.buttonScale.isChecked
+                    && !binding.buttonCrop.isChecked
+                    && !binding.buttonRotate.isChecked) {
+                    binding.buttonLock.isChecked = true
+                }
+            }
+        }
+
+        binding.buttonScale.setOnCheckedChangeListener { _, isToggled ->
+            lockEditMode()
+            if (isToggled) {
+                setScaleMode()
+            }
+        }
+
+        binding.buttonResetScale.setOnClickListener {
+            stickerViewModel.resetCurrentStickerZoom()
+        }
+
+        binding.buttonCrop.setOnCheckedChangeListener { _, isToggled ->
+            lockEditMode()
+            if (isToggled) {
+                setCropEditMode()
+            }
+        }
+
+        binding.buttonResetCrop.setOnClickListener {
+            stickerViewModel.resetCurrentStickerCropping()
+        }
+
+        binding.buttonRotate.setOnCheckedChangeListener { _, isToggled ->
+            lockEditMode()
+            if (isToggled) {
+                setRotationEditMode()
+            }
+        }
+
+        binding.buttonResetRotation.setOnClickListener {
+            stickerViewModel.resetCurrentStickerRotation()
+        }
+    }
+
+    private fun lockEditMode() {
+        // If no edit mode is active, reset to locked mode as default.
+        binding.buttonLock.isChecked = true
+        stickerViewModel.isLocked.value = true
+
+        binding.buttonScale.isChecked = false
+
+        binding.buttonCrop.isChecked = false
+        stickerViewModel.isCropActive.value = false
+
+        binding.buttonRotate.isChecked = false
+        stickerViewModel.rotationEnabled.value = false
+    }
+
+    private fun setScaleMode() {
+        // Scale mode is the default edit mode, so there is no special flag.
+        // It's achieved by just being in edit mode without being locked.
+        binding.buttonScale.isChecked = true
+
+        binding.buttonLock.isChecked = false
+        stickerViewModel.isLocked.value = false
+    }
+
+    private fun setCropEditMode() {
+        binding.buttonCrop.isChecked = true
+        stickerViewModel.isCropActive.value = true
+
+        binding.buttonLock.isChecked = false
+        stickerViewModel.isLocked.value = false
+    }
+
+    private fun setRotationEditMode() {
+        binding.buttonRotate.isChecked = true
+        stickerViewModel.rotationEnabled.value = true
+
+        binding.buttonLock.isChecked = false
+        stickerViewModel.isLocked.value = false
+    }
+
+    private fun setUIVisibility(isToggled: Boolean) {
+        if (isToggled) {
+            binding.toolbarLayout.visibility = View.GONE
+            val top = ContextCompat.getDrawable(this, R.drawable.ic_baseline_visibility_off_24)
+            binding.buttonHideShowUI.setCompoundDrawablesWithIntrinsicBounds(null, top, null, null)
+        } else {
+            binding.toolbarLayout.visibility = View.VISIBLE
+            val top = ContextCompat.getDrawable(this, R.drawable.ic_baseline_visibility_24)
+            binding.buttonHideShowUI.setCompoundDrawablesWithIntrinsicBounds(null, top, null, null)
+        }
     }
 
     private fun save() {
@@ -428,120 +577,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
         super.onActivityResult(requestCode, resultCode, data)
-    }
-
-    private fun setupButtons() {
-        binding.buttonOpen.setOnClickListener { load() }
-
-        binding.buttonSave.setOnClickListener { save() }
-
-        binding.buttonSaveAs.setOnClickListener { saveAs() }
-
-        binding.buttonNew.setOnClickListener {
-            AlertDialog.Builder(this)
-                .setIcon(android.R.drawable.ic_dialog_alert)
-                .setTitle("Confirm")
-                .setMessage("Are you sure you want to create a new board?")
-                .setPositiveButton("Yes") { _, _ -> newBoard() }
-                .setNegativeButton("No", null)
-                .show()
-        }
-
-        binding.buttonCropAll.setOnClickListener {
-            AlertDialog.Builder(this)
-                .setIcon(android.R.drawable.ic_dialog_alert)
-                .setTitle("Confirm")
-                .setMessage("Are you sure you want to crop all images? This will permanently modify the images to match their cropped areas, but it can save  space and improve performance.")
-                .setPositiveButton("Yes") { _, _ -> cropAll() }
-                .setNegativeButton("No", null)
-                .show()
-        }
-
-        binding.buttonAdd.setOnClickListener {
-            addSticker()
-        }
-
-        binding.buttonReset.setOnClickListener { stickerViewModel.resetView() }
-
-        binding.buttonDuplicate.setOnClickListener { stickerViewModel.duplicateCurrentSticker() }
-
-        binding.buttonLock.setOnCheckedChangeListener { _, isToggled ->
-            releaseEditMode()
-            if (isToggled) {
-                setLockedEditMode()
-            }
-        }
-
-        binding.buttonCrop.setOnCheckedChangeListener { _, isToggled ->
-            releaseEditMode()
-            if (isToggled) {
-                setCropEditMode()
-            }
-        }
-
-        binding.buttonResetCrop.setOnClickListener {
-            stickerViewModel.resetCurrentStickerCropping()
-        }
-
-        binding.buttonRotate.setOnCheckedChangeListener { _, isToggled ->
-            releaseEditMode()
-            if (isToggled) {
-                setRotationEditMode()
-            }
-        }
-
-        binding.buttonRotate.setOnLongClickListener {
-            stickerViewModel.resetCurrentStickerRotation()
-            true
-        }
-
-        binding.buttonResetZoom.setOnClickListener {
-            stickerViewModel.resetCurrentStickerZoom()
-        }
-
-        binding.buttonHideShowUI.setOnCheckedChangeListener { _, isToggled ->
-            setUIVisibility(isToggled)
-        }
-    }
-
-    private fun releaseEditMode() {
-        binding.buttonLock.isChecked = false
-        stickerViewModel.isLocked.value = false
-
-        binding.buttonCrop.isChecked = false
-        stickerViewModel.isCropActive.value = false
-
-        binding.buttonRotate.isChecked = false
-        stickerViewModel.rotationEnabled.value = false
-    }
-
-    private fun setLockedEditMode() {
-        binding.buttonLock.isChecked = true
-        stickerViewModel.isLocked.value = true
-    }
-
-    private fun setCropEditMode() {
-        binding.buttonCrop.isChecked = true
-        stickerViewModel.isCropActive.value = true
-    }
-
-    private fun setRotationEditMode() {
-        binding.buttonRotate.isChecked = true
-        stickerViewModel.rotationEnabled.value = true
-    }
-
-    private fun setUIVisibility(isToggled: Boolean) {
-        if (isToggled) {
-            binding.toolbarTop.visibility = View.GONE;
-            binding.toolbarBottom.visibility = View.GONE;
-            val top = ContextCompat.getDrawable(this, R.drawable.ic_baseline_visibility_off_24)
-            binding.buttonHideShowUI.setCompoundDrawablesWithIntrinsicBounds(null, top, null, null)
-        } else {
-            binding.toolbarTop.visibility = View.VISIBLE;
-            binding.toolbarBottom.visibility = View.VISIBLE;
-            val top = ContextCompat.getDrawable(this, R.drawable.ic_baseline_visibility_24)
-            binding.buttonHideShowUI.setCompoundDrawablesWithIntrinsicBounds(null, top, null, null)
-        }
     }
 
     override fun onBackPressed() {

@@ -8,95 +8,91 @@
         <variable name="viewModel" type="com.xiaopo.flying.sticker.StickerViewModel" />
     </data>
 
-    <FrameLayout
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/activity_main"
         android:layout_width="fill_parent"
         android:layout_height="fill_parent">
 
-        <RelativeLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent">
+        <com.xiaopo.flying.sticker.StickerView
+            android:id="@+id/sticker_view"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_gravity="center"
+            android:layout_weight="1"
+            app:activeIcons="@={viewModel.activeIcons}"
+            app:borderColor="@color/sticker_border"
+            app:bringToFrontCurrentSticker="true"
+            app:canvasMatrix="@{viewModel.canvasMatrix}"
+            app:constrained="@{viewModel.constrained}"
+            app:currentIcon="@{viewModel.currentIcon}"
 
+            app:currentMode="@{viewModel.currentMode}"
+            app:gestureDetector="@{viewModel.gestureListener}"
+            app:handlingSticker="@{viewModel.handlingSticker}"
+            app:iconColor="@android:color/black"
+            app:icons="@{viewModel.icons}"
+            app:isCropActive="@{viewModel.isCropActive}"
+            app:isLocked="@{viewModel.isLocked}"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:mustLockToPan="@{viewModel.mustLockToPan}"
+            app:onTouchListener="@{viewModel.onTouchListener}"
+            app:rotateIcons="@{viewModel.rotateIcons}"
+            app:rotationEnabled="@{viewModel.rotationEnabled}"
+            app:showAuxiliaryLines="false"
+            app:showBorder="true"
+            app:showIcons="true"
+            app:stickers="@{viewModel.stickers}">
 
-            <com.xiaopo.flying.sticker.StickerView
-                android:id="@+id/sticker_view"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:layout_gravity="center"
-                android:layout_weight="1"
-                app:activeIcons="@={viewModel.activeIcons}"
-                app:borderColor="@color/sticker_border"
-                app:iconColor="@android:color/black"
-                app:bringToFrontCurrentSticker="true"
-                app:canvasMatrix="@{viewModel.canvasMatrix}"
-                app:constrained="@{viewModel.constrained}"
-
-                app:currentIcon="@{viewModel.currentIcon}"
-                app:currentMode="@{viewModel.currentMode}"
-                app:gestureDetector="@{viewModel.gestureListener}"
-                app:handlingSticker="@{viewModel.handlingSticker}"
-                app:icons="@{viewModel.icons}"
-                app:rotateIcons="@{viewModel.rotateIcons}"
-                app:isCropActive="@{viewModel.isCropActive}"
-                app:isLocked="@{viewModel.isLocked}"
-                app:mustLockToPan="@{viewModel.mustLockToPan}"
-                app:onTouchListener="@{viewModel.onTouchListener}"
-                app:rotationEnabled="@{viewModel.rotationEnabled}"
-                app:showAuxiliaryLines="false"
-                app:showBorder="true"
-                app:showIcons="true"
-                app:stickers="@{viewModel.stickers}">
-
-                <View
-                    android:id="@+id/view"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="#303030"
-                    android:backgroundTint="#303030"
-                    android:foreground="#303030"
-                    android:foregroundTint="#303030" />
-            </com.xiaopo.flying.sticker.StickerView>
-
-            <HorizontalScrollView
-                android:id="@+id/toolbarHideShowUI"
+            <View
+                android:id="@+id/view"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_alignParentRight="true"
-                android:layout_alignParentBottom="false"
-                android:background="#00000000"
-                android:foreground="#00000000"
-                android:scrollbars="none"
-                android:visibility="visible">
+                android:background="#303030"
+                android:backgroundTint="#303030"
+                android:foreground="#303030"
+                android:foregroundTint="#303030" />
+        </com.xiaopo.flying.sticker.StickerView>
 
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="match_parent"
-                    android:orientation="horizontal">
+        <ToggleButton
+            android:id="@+id/buttonHideShowUI"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="16dp"
+            android:layout_weight="1"
+            android:drawableTop="@drawable/ic_baseline_visibility_24"
+            android:gravity="center"
+            android:minWidth="1dp"
+            android:textOff=""
+            android:textOn=""
+            android:textSize="0dp"
+            android:visibility="visible"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:visibility="visible" />
 
-                    <ToggleButton
-                        android:id="@+id/buttonHideShowUI"
-                        android:layout_width="wrap_content"
-                        android:layout_height="match_parent"
-                        android:layout_weight="1"
-                        android:drawableTop="@drawable/ic_baseline_visibility_24"
-                        android:gravity="center"
-                        android:minWidth="1dp"
-                        android:textOff=""
-                        android:textOn=""
-                        android:textSize="0dp"
-                        android:visibility="visible"
-                        tools:visibility="visible" />
-                </LinearLayout>
-            </HorizontalScrollView>
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/toolbarLayout"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
 
             <HorizontalScrollView
                 android:id="@+id/toolbarTop"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_alignParentTop="true"
                 android:background="#00000000"
                 android:foreground="#00000000"
-                android:scrollbars="none">
+                android:scrollbars="none"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
 
                 <LinearLayout
                     android:layout_width="wrap_content"
@@ -140,104 +136,162 @@
                 </LinearLayout>
             </HorizontalScrollView>
 
-            <HorizontalScrollView
-                android:id="@+id/toolbarBottom"
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:id="@+id/toolbarBottomReset"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_alignParentBottom="true"
-                android:background="#00000000"
-                android:foreground="#00000000"
-                android:scrollbars="none"
-                android:visibility="visible">
+                android:layout_weight="1"
+                android:orientation="horizontal"
+                android:visibility="visible"
+                app:layout_constraintBottom_toTopOf="@+id/toolbarBottomEdit"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent">
 
-                <LinearLayout
+                <ImageButton
+                    android:id="@+id/buttonReset"
                     android:layout_width="wrap_content"
                     android:layout_height="match_parent"
-                    android:orientation="horizontal">
+                    android:layout_weight="1"
+                    app:srcCompat="@drawable/ic_refresh_black_24dp" />
 
-                    <ImageButton
-                        android:id="@+id/buttonAdd"
-                        android:layout_width="wrap_content"
-                        android:layout_height="match_parent"
-                        android:layout_weight="1"
-                        app:srcCompat="@drawable/ic_add_box_black_24dp" />
+                <ImageButton
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:visibility="invisible"
+                    app:srcCompat="@drawable/ic_baseline_content_copy_24" />
 
-                    <ImageButton
-                        android:id="@+id/buttonReset"
-                        android:layout_width="wrap_content"
-                        android:layout_height="match_parent"
-                        android:layout_weight="1"
-                        app:srcCompat="@drawable/ic_refresh_black_24dp" />
+                <ImageButton
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:visibility="invisible"
+                    app:srcCompat="@drawable/ic_baseline_content_copy_24" />
 
-                    <ImageButton
-                        android:id="@+id/buttonDuplicate"
-                        android:layout_width="wrap_content"
-                        android:layout_height="match_parent"
-                        android:layout_weight="1"
-                        app:srcCompat="@drawable/ic_baseline_content_copy_24" />
+                <ImageButton
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:visibility="invisible"
+                    app:srcCompat="@drawable/ic_baseline_content_copy_24" />
 
-                    <ToggleButton
-                        android:id="@+id/buttonLock"
-                        android:layout_width="wrap_content"
-                        android:layout_height="match_parent"
-                        android:layout_weight="1"
-                        android:drawableTop="@drawable/ic_lock_outline_black_24dp"
-                        android:gravity="center"
-                        android:minWidth="1dp"
-                        android:textOff=""
-                        android:textOn=""
-                        android:textSize="0dp" />
+                <ImageButton
+                    android:id="@+id/buttonResetScale"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    app:srcCompat="@drawable/ic_zoom_out_map_black_24dp" />
 
-                    <ToggleButton
-                        android:id="@+id/buttonCrop"
-                        android:layout_width="wrap_content"
-                        android:layout_height="match_parent"
-                        android:layout_weight="1"
-                        android:drawableTop="@drawable/ic_crop_black_24dp"
-                        android:gravity="center"
-                        android:minWidth="1dp"
-                        android:textOff=""
-                        android:textOn=""
-                        android:textSize="0dp" />
+                <ImageButton
+                    android:id="@+id/buttonResetCrop"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    app:srcCompat="@drawable/ic_crop_rotate_black_24dp" />
 
-                    <ToggleButton
-                        android:id="@+id/buttonRotate"
-                        android:layout_width="wrap_content"
-                        android:layout_height="match_parent"
-                        android:layout_weight="1"
-                        android:drawableTop="@drawable/ic_rotate"
-                        android:gravity="center"
-                        android:minWidth="1dp"
-                        android:textOff=""
-                        android:textOn=""
-                        android:textSize="0dp" />
+                <ImageButton
+                    android:id="@+id/buttonResetRotation"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    app:srcCompat="@drawable/ic_rotate" />
 
-                    <ImageButton
-                        android:id="@+id/buttonResetCrop"
-                        android:layout_width="wrap_content"
-                        android:layout_height="match_parent"
-                        android:layout_weight="1"
-                        app:srcCompat="@drawable/ic_crop_rotate_black_24dp" />
+            </LinearLayout>
 
-                    <ImageButton
-                        android:id="@+id/buttonResetZoom"
-                        android:layout_width="wrap_content"
-                        android:layout_height="match_parent"
-                        android:layout_weight="1"
-                        app:srcCompat="@drawable/ic_zoom_out_map_black_24dp" />
+            <LinearLayout
+                android:id="@+id/toolbarBottomEdit"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent">
 
-                </LinearLayout>
-            </HorizontalScrollView>
-        </RelativeLayout>
+                <ImageButton
+                    android:id="@+id/buttonAdd"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    app:srcCompat="@drawable/ic_add_box_black_24dp" />
+
+                <ImageButton
+                    android:id="@+id/buttonDuplicate"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    app:srcCompat="@drawable/ic_baseline_content_copy_24" />
+
+                <ImageButton
+                    android:id="@+id/imageButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:visibility="invisible"
+                    app:srcCompat="@drawable/ic_baseline_content_copy_24" />
+
+                <ToggleButton
+                    android:id="@+id/buttonLock"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:drawableTop="@drawable/ic_lock_outline_black_24dp"
+                    android:gravity="center"
+                    android:minWidth="1dp"
+                    android:textOff=""
+                    android:textOn=""
+                    android:textSize="0dp" />
+
+                <ToggleButton
+                    android:id="@+id/buttonScale"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:drawableTop="@drawable/ic_zoom_out_map_black_24dp"
+                    android:gravity="center"
+                    android:minWidth="1dp"
+                    android:textOff=""
+                    android:textOn=""
+                    android:textSize="0dp" />
+
+                <ToggleButton
+                    android:id="@+id/buttonCrop"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:drawableTop="@drawable/ic_crop_black_24dp"
+                    android:gravity="center"
+                    android:minWidth="1dp"
+                    android:textOff=""
+                    android:textOn=""
+                    android:textSize="0dp" />
+
+                <ToggleButton
+                    android:id="@+id/buttonRotate"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:drawableTop="@drawable/ic_rotate"
+                    android:gravity="center"
+                    android:minWidth="1dp"
+                    android:textOff=""
+                    android:textOn=""
+                    android:textSize="0dp" />
+
+            </LinearLayout>
+        </androidx.constraintlayout.widget.ConstraintLayout>
 
         <FrameLayout
             android:id="@+id/progressBarHolder"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
             android:alpha="0.4"
             android:animateLayoutChanges="true"
             android:background="#000000"
-            android:visibility="gone">
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
 
             <ProgressBar
                 android:id="@+id/progressBar"
@@ -246,5 +300,5 @@
                 android:layout_gravity="center"
                 android:indeterminate="true" />
         </FrameLayout>
-    </FrameLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>
