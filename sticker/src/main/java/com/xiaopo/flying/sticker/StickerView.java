@@ -215,7 +215,7 @@ public class StickerView extends FrameLayout {
             canvas.drawLine(x4, y4, x3, y3, borderPaint);
         }
 
-        float rotation = StickerMath.calculateRotation(x4, y4, x3, y3);
+        float rotation = StickerMath.calculateAngle(x4, y4, x3, y3);
         float roundedRotation = roundOff(rotation);
 
         canvas.restore();
@@ -253,7 +253,7 @@ public class StickerView extends FrameLayout {
                 float x4 = bitmapPoints[6];
                 float y4 = bitmapPoints[7];
 
-                float rotation = StickerMath.calculateRotation(x4, y4, x3, y3);
+                float rotation = StickerMath.calculateAngle(x4, y4, x3, y3);
 
                 for (int i = 0; i < activeIcons.get().size(); i++) {
                     BitmapStickerIcon icon = activeIcons.get().get(i);
@@ -292,24 +292,24 @@ public class StickerView extends FrameLayout {
         return Math.round(rotation * 100f) / 100f;
     }
 
-    public static float midValue(float n1, float n2) {
-        return n1 / 2 + n2 / 2 + (n1 % 2 + n2 % 2) / 2;
-    }
-
     protected void configIconMatrix(@NonNull BitmapStickerIcon icon, float x, float y, float rotation) {
         icon.setX(x);
         icon.setY(y);
-        icon.getMatrix().reset();
+        icon.getTransform().reset();
 
-        icon.getMatrix().postRotate(rotation, icon.getWidth() / 2f, icon.getHeight() / 2f);
-        icon.getMatrix().postTranslate(x - icon.getWidth() / 2f, y - icon.getHeight() / 2f);
+        // ToDo: cleanup
+        //icon.getMatrix().postRotate(rotation, icon.getWidth() / 2f, icon.getHeight() / 2f);
+        //icon.getMatrix().postTranslate(x - icon.getWidth() / 2f, y - icon.getHeight() / 2f);
+        icon.getTransform().rotate(rotation);
+        icon.getTransform().translate(x - icon.getWidth() / 2f, y - icon.getHeight() / 2f);
         icon.setCanvasMatrix(canvasMatrix.getMatrix());
         Matrix a = new Matrix();
         canvasMatrix.invert(a);
         float radius = a.mapRadius(BitmapStickerIcon.DEFAULT_ICON_RADIUS);
         icon.setIconRadius(radius);
-        icon.getMatrix().postScale(radius / BitmapStickerIcon.DEFAULT_ICON_RADIUS, radius / BitmapStickerIcon.DEFAULT_ICON_RADIUS, x, y);
-        icon.recalcFinalMatrix();
+        // ToDo: cleanup
+        //icon.getMatrix().postScale(radius / BitmapStickerIcon.DEFAULT_ICON_RADIUS, radius / BitmapStickerIcon.DEFAULT_ICON_RADIUS, x, y);
+        icon.getTransform().scale(radius / BitmapStickerIcon.DEFAULT_ICON_RADIUS, radius / BitmapStickerIcon.DEFAULT_ICON_RADIUS);
     }
 
     public void detectIconGesture(@NotNull MotionEvent event) {
@@ -340,9 +340,7 @@ public class StickerView extends FrameLayout {
     }
 
     private PointF getScaledSize(Sticker sticker) {
-        float screenX = 0;
-        float screenY = 0;
-        float temp[] = {sticker.getWidth(), sticker.getHeight()};
+        float[] temp = {sticker.getWidth(), sticker.getHeight()};
         sticker.getFinalMatrix().mapVectors(temp);
         float sw = temp[0];
         float sh = temp[1];
@@ -350,27 +348,14 @@ public class StickerView extends FrameLayout {
     }
 
     protected void layoutStickerImmediately(@NonNull Sticker sticker, @Sticker.Position int position) {
-        sticker.getMatrix().reset();
-        sticker.recalcFinalMatrix();
+        sticker.getTransform().reset();
 
-        float scaleFactor, widthScaleFactor, heightScaleFactor;
-        float[] worldSize = {getWidth(), getHeight()};
+        float[] worldSize = { getWidth(), getHeight() };
         Matrix a = new Matrix();
         canvasMatrix.invert(a);
         a.mapVectors(worldSize);
-        float worldWidth = worldSize[0];
-        float worldHeight = worldSize[1];
-
-        PointF scaled = getScaledSize(sticker);
-
-        widthScaleFactor = (float)sticker.getWidth() / scaled.x;
-        heightScaleFactor = (float)sticker.getHeight() / scaled.y;
-        scaleFactor = Math.min(widthScaleFactor, heightScaleFactor);
-        //sticker.getMatrix().postScale(scaleFactor / 2, scaleFactor / 2);
-        sticker.recalcFinalMatrix();
 
         setStickerPosition(sticker, position);
-
         setHandlingSticker(sticker);
     }
 
@@ -397,7 +382,7 @@ public class StickerView extends FrameLayout {
         Matrix a = new Matrix();
         sticker.getFinalMatrix().invert(a);
         a.mapPoints(temp2);
-        sticker.getMatrix().setTranslate(temp2[0], temp2[1]);
+        sticker.getTransform().setPosition(temp2[0], temp2[1]);
     }
 
     public Sticker getHandlingSticker() {

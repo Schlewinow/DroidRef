@@ -1,6 +1,5 @@
 package com.xiaopo.flying.sticker.iconEvents;
 
-import android.graphics.Matrix;
 import android.view.MotionEvent;
 
 import com.xiaopo.flying.sticker.Sticker;
@@ -12,10 +11,9 @@ public class RotateRightEvent implements StickerIconEvent {
     @Override
     public void onActionDown(StickerView stickerView, StickerViewModel viewModel, MotionEvent event) {
         Sticker activeSticker = stickerView.getCurrentSticker();
-        activeSticker.getMatrix().preRotate(
-                90.0f,
-                activeSticker.getWidth() * 0.5f,
-                activeSticker.getHeight() * 0.5f);
+        if (activeSticker != null) {
+            activeSticker.getTransform().rotate(90.0f);
+        }
     }
 
     @Override

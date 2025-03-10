@@ -61,13 +61,12 @@ public class DrawableSticker extends Sticker {
         float dx = (croppedBounds.left - (float)realBounds.left);
         float dy = (croppedBounds.top - (float)realBounds.top);
         float[] a = {dx, dy};
-        this.getMatrix().mapVectors(a);
-        this.getMatrix().postTranslate(a[0], a[1]);
+        this.getTransform().getMatrix().mapVectors(a);
+        this.getTransform().translate(a[0], a[1]);
 
         this.drawable = new BitmapDrawable(resources, cropped);
         this.realBounds = new Rect(0, 0, getWidth(), getHeight());
         this.croppedBounds = new RectF(this.realBounds);
-        this.recalcFinalMatrix();
         cacheBitmap();
     }
 
