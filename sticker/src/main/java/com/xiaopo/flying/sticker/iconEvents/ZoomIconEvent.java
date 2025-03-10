@@ -11,18 +11,30 @@ import com.xiaopo.flying.sticker.StickerViewModel;
  */
 
 public class ZoomIconEvent implements StickerIconEvent {
+
+    private final boolean horizontalScale;
+    private final boolean verticalScale;
+
+    public ZoomIconEvent() {
+        horizontalScale = true;
+        verticalScale = true;
+    }
+
+    public ZoomIconEvent(Boolean horizontalScale, Boolean verticalScale) {
+        this.horizontalScale = horizontalScale;
+        this.verticalScale = verticalScale;
+    }
+
     @Override
     public void onActionDown(StickerView stickerView, StickerViewModel viewModel, MotionEvent event) {
-
     }
 
     @Override
     public void onActionMove(StickerView stickerView, StickerViewModel viewModel, MotionEvent event) {
-        viewModel.zoomAndRotateCurrentSticker(event);
+        viewModel.zoomAndRotateCurrentSticker(event, horizontalScale, verticalScale);
     }
 
     @Override
     public void onActionUp(StickerView stickerView, StickerViewModel viewModel, MotionEvent event) {
     }
-
 }

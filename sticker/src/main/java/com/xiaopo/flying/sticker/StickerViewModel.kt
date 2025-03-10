@@ -434,11 +434,11 @@ open class StickerViewModel :
         }
     }
 
-    fun zoomAndRotateCurrentSticker(event: MotionEvent) {
-        zoomAndRotateSticker(handlingSticker.value, event)
+    fun zoomAndRotateCurrentSticker(event: MotionEvent, horizontalScale: Boolean, verticalScale: Boolean) {
+        zoomAndRotateSticker(handlingSticker.value, event, horizontalScale, verticalScale)
     }
 
-    private fun zoomAndRotateSticker(sticker: Sticker?, event: MotionEvent) {
+    private fun zoomAndRotateSticker(sticker: Sticker?, event: MotionEvent, horizontalScale: Boolean, verticalScale: Boolean) {
         if (sticker != null) {
             val temp = floatArrayOf(event.x, event.y)
             val invertCanvasMatrix = Matrix()
@@ -453,8 +453,14 @@ open class StickerViewModel :
             val newRotation = StickerMath.calculateAngle(midPoint.x, midPoint.y, touchPoint.x, touchPoint.y)
 
             if (rotationEnabled.value == false) {
-                val newScaleX = stickerWorldTransform.scaling.x * (newDistance / oldDistance)
-                val newScaleY = stickerWorldTransform.scaling.y * (newDistance / oldDistance)
+                var newScaleX = stickerWorldTransform.scaling.x
+                if (horizontalScale) {
+                    newScaleX *= newDistance / oldDistance
+                }
+                var newScaleY = stickerWorldTransform.scaling.y
+                if (verticalScale) {
+                    newScaleY *= newDistance / oldDistance
+                }
                 handlingSticker.value!!.transform.setScaling(newScaleX, newScaleY)
             }
             else {
@@ -499,6 +505,8 @@ open class StickerViewModel :
                     BitmapStickerIcon.RIGHT_BOTTOM -> BitmapStickerIcon.LEFT_TOP
                     BitmapStickerIcon.LEFT_CENTER -> BitmapStickerIcon.RIGHT_CENTER
                     BitmapStickerIcon.RIGHT_CENTER -> BitmapStickerIcon.LEFT_CENTER
+                    BitmapStickerIcon.TOP_CENTER -> BitmapStickerIcon.BOTTOM_CENTER
+                    BitmapStickerIcon.BOTTOM_CENTER -> BitmapStickerIcon.TOP_CENTER
                     else -> gravity
                 }
             } else {
@@ -519,6 +527,8 @@ open class StickerViewModel :
                     BitmapStickerIcon.LEFT_BOTTOM -> BitmapStickerIcon.LEFT_TOP
                     BitmapStickerIcon.RIGHT_TOP -> BitmapStickerIcon.RIGHT_BOTTOM
                     BitmapStickerIcon.RIGHT_BOTTOM -> BitmapStickerIcon.RIGHT_TOP
+                    BitmapStickerIcon.TOP_CENTER -> BitmapStickerIcon.BOTTOM_CENTER
+                    BitmapStickerIcon.BOTTOM_CENTER -> BitmapStickerIcon.TOP_CENTER
                     else -> gravity
                 }
             } else {

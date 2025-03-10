@@ -138,7 +138,7 @@ class MainActivity : AppCompatActivity() {
         val zoomIcon = BitmapStickerIcon(
             ContextCompat.getDrawable(
                 this,
-                com.xiaopo.flying.sticker.R.drawable.sticker_ic_scale_white_18dp
+                R.drawable.icon_scale
             ),
             BitmapStickerIcon.RIGHT_BOTTOM
         )
@@ -162,31 +162,31 @@ class MainActivity : AppCompatActivity() {
         )
         flipVerticallyIcon.iconEvent = FlipVerticallyEvent()
 
-        val rotateLeftIcon = BitmapStickerIcon(
+        val scaleVerticalIcon = BitmapStickerIcon(
             ContextCompat.getDrawable(
                 this,
-                R.drawable.icon_rotate_left
+                R.drawable.icon_scale_vertical
             ),
-            BitmapStickerIcon.LEFT_CENTER
+            BitmapStickerIcon.BOTTOM_CENTER
         )
-        rotateLeftIcon.iconEvent = RotateLeftEvent()
+        scaleVerticalIcon.iconEvent = ZoomIconEvent(false, true)
 
-        val rotateRightIcon = BitmapStickerIcon(
+        val scaleHorizontalIcon = BitmapStickerIcon(
             ContextCompat.getDrawable(
                 this,
-                R.drawable.icon_rotate_right
+                R.drawable.icon_scale_horizontal
             ),
             BitmapStickerIcon.RIGHT_CENTER
         )
-        rotateRightIcon.iconEvent = RotateRightEvent()
+        scaleHorizontalIcon.iconEvent = ZoomIconEvent(true, false)
 
         stickerViewModel.icons.value = arrayListOf(
             deleteIcon,
             zoomIcon,
             flipIcon,
             flipVerticallyIcon,
-            rotateLeftIcon,
-            rotateRightIcon
+            scaleVerticalIcon,
+            scaleHorizontalIcon
         )
         stickerViewModel.activeIcons.value = stickerViewModel.icons.value
     }
@@ -290,6 +290,8 @@ class MainActivity : AppCompatActivity() {
                 lockEditMode()
             }
             else {
+                // The lock button does not un-toggle itself, as it is the default mode.
+                // It is instead un-toggled once one of the edit modes is activated.
                 if (!binding.buttonScale.isChecked
                     && !binding.buttonCrop.isChecked
                     && !binding.buttonRotate.isChecked) {

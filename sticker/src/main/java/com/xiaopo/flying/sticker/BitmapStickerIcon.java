@@ -21,7 +21,7 @@ public class BitmapStickerIcon extends DrawableSticker implements StickerIconEve
     public static final float DEFAULT_ICON_RADIUS = 35f;
     public static final float DEFAULT_ICON_EXTRA_RADIUS = 10f;
 
-    @IntDef({LEFT_TOP, RIGHT_TOP, LEFT_BOTTOM, RIGHT_BOTTOM, LEFT_CENTER, RIGHT_CENTER})
+    @IntDef({LEFT_TOP, RIGHT_TOP, LEFT_BOTTOM, RIGHT_BOTTOM, LEFT_CENTER, RIGHT_CENTER, TOP_CENTER, BOTTOM_CENTER})
     @Retention(RetentionPolicy.SOURCE)
     public @interface Gravity {
 
@@ -33,6 +33,8 @@ public class BitmapStickerIcon extends DrawableSticker implements StickerIconEve
     public static final int RIGHT_BOTTOM = 3;
     public static final int LEFT_CENTER = 4;
     public static final int RIGHT_CENTER = 5;
+    public static final int TOP_CENTER = 6;
+    public static final int BOTTOM_CENTER = 7;
 
     private float iconRadius = DEFAULT_ICON_RADIUS;
     private float iconExtraRadius = DEFAULT_ICON_EXTRA_RADIUS;

@@ -215,9 +215,6 @@ public class StickerView extends FrameLayout {
             canvas.drawLine(x4, y4, x3, y3, borderPaint);
         }
 
-        float rotation = StickerMath.calculateAngle(x4, y4, x3, y3);
-        float roundedRotation = roundOff(rotation);
-
         canvas.restore();
     }
 
@@ -281,6 +278,14 @@ public class StickerView extends FrameLayout {
                         case BitmapStickerIcon.RIGHT_CENTER:
                             configIconMatrix(icon, (x2 + x4) / 2, (y2 + y4) / 2, rotation);
                             break;
+
+                        case BitmapStickerIcon.TOP_CENTER:
+                            configIconMatrix(icon, (x1 + x2) / 2, (y1 + y2) / 2, rotation);
+                            break;
+
+                        case BitmapStickerIcon.BOTTOM_CENTER:
+                            configIconMatrix(icon, (x3 + x4) / 2, (y3 + y4) / 2, rotation);
+                            break;
                     }
                     icon.draw(canvas, iconPaint);
                 }
@@ -288,18 +293,11 @@ public class StickerView extends FrameLayout {
         }
     }
 
-    private float roundOff(float rotation) {
-        return Math.round(rotation * 100f) / 100f;
-    }
-
     protected void configIconMatrix(@NonNull BitmapStickerIcon icon, float x, float y, float rotation) {
         icon.setX(x);
         icon.setY(y);
         icon.getTransform().reset();
 
-        // ToDo: cleanup
-        //icon.getMatrix().postRotate(rotation, icon.getWidth() / 2f, icon.getHeight() / 2f);
-        //icon.getMatrix().postTranslate(x - icon.getWidth() / 2f, y - icon.getHeight() / 2f);
         icon.getTransform().rotate(rotation);
         icon.getTransform().translate(x - icon.getWidth() / 2f, y - icon.getHeight() / 2f);
         icon.setCanvasMatrix(canvasMatrix.getMatrix());
@@ -307,8 +305,6 @@ public class StickerView extends FrameLayout {
         canvasMatrix.invert(a);
         float radius = a.mapRadius(BitmapStickerIcon.DEFAULT_ICON_RADIUS);
         icon.setIconRadius(radius);
-        // ToDo: cleanup
-        //icon.getMatrix().postScale(radius / BitmapStickerIcon.DEFAULT_ICON_RADIUS, radius / BitmapStickerIcon.DEFAULT_ICON_RADIUS, x, y);
         icon.getTransform().scale(radius / BitmapStickerIcon.DEFAULT_ICON_RADIUS, radius / BitmapStickerIcon.DEFAULT_ICON_RADIUS);
     }
 
