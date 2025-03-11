@@ -57,7 +57,9 @@ fun MessageUnpacker.unpackRectF(): RectF {
 class StickerViewSerializer {
     data class Entry(
         val bounds: Rect,
-        val matrix: Matrix,
+        val position: PointF,
+        val rotation: Float,
+        val scale: PointF,
         val cropBounds: RectF,
         val flipHorizontal: Boolean,
         val flipVertical: Boolean
@@ -70,10 +72,16 @@ class StickerViewSerializer {
         val dedup: MutableMap<String, StickerMetadata> = mutableMapOf()
 
         viewModel.stickers.value!!.forEach {
+            if (!it.isEditable) {
+                return@forEach
+            }
+
             val drawableSticker = it as DrawableSticker
             val entry = Entry(
                 drawableSticker.getRealBounds(),
-                drawableSticker.matrix,
+                drawableSticker.transform.position,
+                drawableSticker.transform.rotation,
+                drawableSticker.transform.scaling,
                 drawableSticker.croppedBounds,
                 drawableSticker.isFlippedHorizontally,
                 drawableSticker.isFlippedVertically
@@ -99,7 +107,9 @@ class StickerViewSerializer {
                     val sticker = DrawableSticker(drawable, metadata.bitmap, sha)
                     sticker.realBounds = entry.bounds
                     sticker.croppedBounds = entry.cropBounds
-                    sticker.setMatrix(entry.matrix)
+                    sticker.transform.position = entry.position
+                    sticker.transform.rotation = entry.rotation
+                    sticker.transform.scaling = entry.scale
                     sticker.isFlippedHorizontally = entry.flipHorizontal
                     sticker.isFlippedVertically = entry.flipVertical
                     sticker
@@ -130,7 +140,11 @@ class StickerViewSerializer {
                     p.packArrayHeader(sticker.instances.size)
                     sticker.instances.forEach {
                         p.packRect(it.bounds)
-                        p.packMatrix(it.matrix)
+                        p.packFloat(it.position.x)
+                        p.packFloat(it.position.y)
+                        p.packFloat(it.rotation)
+                        p.packFloat(it.scale.x)
+                        p.packFloat(it.scale.y)
                         p.packRectF(it.cropBounds)
                         p.packBoolean(it.flipHorizontal)
                         p.packBoolean(it.flipVertical)
@@ -155,11 +169,15 @@ class StickerViewSerializer {
                     val instances: ArrayList<Entry> = ArrayList()
                     (0 until instanceCount).mapTo(instances) {
                         val bounds = u.unpackRect()
-                        val matrix = u.unpackMatrix()
+                        val positionX = u.unpackFloat()
+                        val positionY = u.unpackFloat()
+                        val rotation = u.unpackFloat()
+                        val scaleX = u.unpackFloat()
+                        val scaleY = u.unpackFloat()
                         val cropBounds = u.unpackRectF()
                         val flipHorizontal = u.unpackBoolean()
                         val flipVertical = u.unpackBoolean()
-                        Entry(bounds, matrix, cropBounds, flipHorizontal, flipVertical)
+                        Entry(bounds, PointF(positionX, positionY), rotation, PointF(scaleX, scaleY), cropBounds, flipHorizontal, flipVertical)
                     }
                     stickers[sha] = StickerMetadata(bitmap, instances)
                 }

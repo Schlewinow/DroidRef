@@ -1,6 +1,7 @@
 package xyz.ruin.droidref
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
@@ -8,6 +9,7 @@ import android.content.pm.PackageManager
 import android.database.Cursor
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.os.AsyncTask
@@ -22,18 +24,20 @@ import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.core.graphics.rotationMatrix
+import androidx.core.content.res.ResourcesCompat
 import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.ViewModelProvider
 import com.github.kittinunf.fuel.core.FuelManager
 import com.github.kittinunf.fuel.core.Headers
 import com.xiaopo.flying.sticker.*
 import com.xiaopo.flying.sticker.StickerView.OnStickerOperationListener
+import com.xiaopo.flying.sticker.iconEvents.CropIconEvent
 import com.xiaopo.flying.sticker.iconEvents.DeleteIconEvent
 import com.xiaopo.flying.sticker.iconEvents.FlipHorizontallyEvent
 import com.xiaopo.flying.sticker.iconEvents.FlipVerticallyEvent
+import com.xiaopo.flying.sticker.iconEvents.RotateLeftEvent
+import com.xiaopo.flying.sticker.iconEvents.RotateRightEvent
 import com.xiaopo.flying.sticker.iconEvents.ZoomIconEvent
-import kotlinx.android.synthetic.main.activity_main.view.*
 import timber.log.Timber
 import xyz.ruin.droidref.databinding.ActivityMainBinding
 import java.io.File
@@ -45,7 +49,6 @@ import java.util.*
 class MainActivity : AppCompatActivity() {
     private lateinit var stickerViewModel: StickerViewModel
     private lateinit var binding: ActivityMainBinding
-    private var rotateToastShowed = false;
 
     override fun onCreate(savedInstanceState: Bundle?) {
         Timber.plant(Timber.DebugTree())
@@ -60,8 +63,23 @@ class MainActivity : AppCompatActivity() {
         binding.executePendingBindings()
         binding.lifecycleOwner = this
 
-        setupIcons()
-        setupButtons()
+        setupScaleStickerIcons()
+        setupRotateStickerIcons()
+        setupCropStickerIcons()
+        setupTopButtons()
+        setupBottomButtons()
+
+        if (stickerViewModel.stickers.value!!.isEmpty()) {
+            // Marker at the center (0,0) of the coordinate system for better user navigation experience.
+            val centerMarkerSticker = DrawableSticker(
+                ResourcesCompat.getDrawable(resources, R.drawable.marker_center, null))
+            centerMarkerSticker.setAlpha(64)
+            centerMarkerSticker.isEditable = false
+            stickerViewModel.addSticker(centerMarkerSticker)
+        }
+
+        // When the app starts, set locked edit mode as default.
+        lockEditMode()
 
         handleIntent(intent)
         intent.type = null // Don't run again if rotated/etc.
@@ -118,48 +136,291 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupIcons() {
-        //currently you can config your own icons and icon event
-        //the event you can custom
-        val deleteIcon = BitmapStickerIcon(
-            ContextCompat.getDrawable(
-                this,
-                com.xiaopo.flying.sticker.R.drawable.sticker_ic_close_white_18dp
-            ),
-            BitmapStickerIcon.LEFT_TOP
-        )
-        deleteIcon.iconEvent = DeleteIconEvent()
-        val zoomIcon = BitmapStickerIcon(
-            ContextCompat.getDrawable(
-                this,
-                com.xiaopo.flying.sticker.R.drawable.sticker_ic_scale_white_18dp
-            ),
-            BitmapStickerIcon.RIGHT_BOTTOM
-        )
-        zoomIcon.iconEvent = ZoomIconEvent()
-        val flipIcon = BitmapStickerIcon(
-            ContextCompat.getDrawable(
-                this,
-                com.xiaopo.flying.sticker.R.drawable.sticker_ic_flip_white_18dp
-            ),
-            BitmapStickerIcon.RIGHT_TOP
-        )
-        flipIcon.iconEvent = FlipHorizontallyEvent()
-        val flipVerticallyIcon = BitmapStickerIcon(
-            ContextCompat.getDrawable(
-                this,
-                com.xiaopo.flying.sticker.R.drawable.sticker_ic_flip_vert_white_18dp
-            ),
-            BitmapStickerIcon.LEFT_BOTTOM
-        )
-        flipVerticallyIcon.iconEvent = FlipVerticallyEvent()
+    /**
+     * It's possible to override the sticker action icons.
+     * Create custom actions for the scale sticker icons.
+     */
+    private fun setupScaleStickerIcons() {
+        val deleteIcon = setupStickerIcon(
+            com.xiaopo.flying.sticker.R.drawable.sticker_ic_close_white_18dp,
+            BitmapStickerIcon.LEFT_TOP,
+            DeleteIconEvent())
+
+        val zoomIcon = setupStickerIcon(
+            R.drawable.icon_scale,
+            BitmapStickerIcon.RIGHT_BOTTOM,
+            ZoomIconEvent())
+
+        val flipIcon = setupStickerIcon(
+            com.xiaopo.flying.sticker.R.drawable.sticker_ic_flip_white_18dp,
+            BitmapStickerIcon.RIGHT_TOP,
+            FlipHorizontallyEvent())
+
+        val flipVerticallyIcon = setupStickerIcon(
+            com.xiaopo.flying.sticker.R.drawable.sticker_ic_flip_vert_white_18dp,
+            BitmapStickerIcon.LEFT_BOTTOM,
+            FlipVerticallyEvent())
+
+        val scaleVerticalIcon = setupStickerIcon(
+            R.drawable.icon_scale_vertical,
+            BitmapStickerIcon.BOTTOM_CENTER,
+            ZoomIconEvent(false, true))
+
+        val scaleHorizontalIcon = setupStickerIcon(
+            R.drawable.icon_scale_horizontal,
+            BitmapStickerIcon.RIGHT_CENTER,
+            ZoomIconEvent(true, false))
+
         stickerViewModel.icons.value = arrayListOf(
             deleteIcon,
             zoomIcon,
             flipIcon,
-            flipVerticallyIcon
+            flipVerticallyIcon,
+            scaleVerticalIcon,
+            scaleHorizontalIcon
         )
         stickerViewModel.activeIcons.value = stickerViewModel.icons.value
+    }
+
+    private fun setupRotateStickerIcons() {
+        val deleteIcon = setupStickerIcon(
+            com.xiaopo.flying.sticker.R.drawable.sticker_ic_close_white_18dp,
+            BitmapStickerIcon.LEFT_TOP,
+            DeleteIconEvent())
+
+        val rotateIcon = setupStickerIcon(
+            R.drawable.icon_rotate_circle,
+            BitmapStickerIcon.RIGHT_BOTTOM,
+            ZoomIconEvent())
+
+        val rotateLeftIcon = setupStickerIcon(
+            R.drawable.icon_rotate_left,
+            BitmapStickerIcon.LEFT_BOTTOM,
+            RotateLeftEvent())
+
+        val rotateRightIcon = setupStickerIcon(
+            R.drawable.icon_rotate_right,
+            BitmapStickerIcon.RIGHT_TOP,
+            RotateRightEvent())
+
+        stickerViewModel.rotateIcons.value = arrayListOf(
+            deleteIcon,
+            rotateIcon,
+            rotateLeftIcon,
+            rotateRightIcon
+        )
+    }
+
+    private fun setupCropStickerIcons() {
+        val cropDiagonalLeftTopIcon = setupStickerIcon(
+            com.xiaopo.flying.sticker.R.drawable.scale_1,
+            BitmapStickerIcon.LEFT_TOP,
+            CropIconEvent(BitmapStickerIcon.LEFT_TOP))
+
+        val cropDiagonalRightTopIcon = setupStickerIcon(
+            com.xiaopo.flying.sticker.R.drawable.scale_2,
+            BitmapStickerIcon.RIGHT_TOP,
+            CropIconEvent(BitmapStickerIcon.RIGHT_TOP))
+
+        val cropDiagonalLeftBottomIcon = setupStickerIcon(
+            com.xiaopo.flying.sticker.R.drawable.scale_2,
+            BitmapStickerIcon.LEFT_BOTTOM,
+            CropIconEvent(BitmapStickerIcon.LEFT_BOTTOM))
+
+        val cropDiagonalRightBottomIcon = setupStickerIcon(
+            com.xiaopo.flying.sticker.R.drawable.scale_1,
+            BitmapStickerIcon.RIGHT_BOTTOM,
+            CropIconEvent(BitmapStickerIcon.RIGHT_BOTTOM))
+
+        val cropVerticalTopIcon = setupStickerIcon(
+            R.drawable.icon_crop_vertical,
+            BitmapStickerIcon.TOP_CENTER,
+            CropIconEvent(BitmapStickerIcon.TOP_CENTER))
+
+        val cropVerticalBottomIcon = setupStickerIcon(
+            R.drawable.icon_crop_vertical,
+            BitmapStickerIcon.BOTTOM_CENTER,
+            CropIconEvent(BitmapStickerIcon.BOTTOM_CENTER))
+
+        val cropHorizontalLeftIcon = setupStickerIcon(
+            R.drawable.icon_crop_horizontal,
+            BitmapStickerIcon.LEFT_CENTER,
+            CropIconEvent(BitmapStickerIcon.LEFT_CENTER))
+
+        val cropHorizontalRightIcon = setupStickerIcon(
+            R.drawable.icon_crop_horizontal,
+            BitmapStickerIcon.RIGHT_CENTER,
+            CropIconEvent(BitmapStickerIcon.RIGHT_CENTER))
+
+        stickerViewModel.cropIcons.value = arrayListOf(
+            cropDiagonalLeftTopIcon,
+            cropDiagonalRightTopIcon,
+            cropDiagonalLeftBottomIcon,
+            cropDiagonalRightBottomIcon,
+            cropVerticalTopIcon,
+            cropVerticalBottomIcon,
+            cropHorizontalLeftIcon,
+            cropHorizontalRightIcon
+        )
+    }
+
+    private fun setupStickerIcon(drawableID: Int, gravity: Int, event: StickerIconEvent): BitmapStickerIcon {
+        val stickerIcon = BitmapStickerIcon(
+            ContextCompat.getDrawable(
+                this,
+                drawableID
+            ),
+            gravity
+        )
+        stickerIcon.iconEvent = event
+        return stickerIcon
+    }
+
+    private fun setupTopButtons() {
+        binding.buttonOpen.setOnClickListener { load() }
+
+        binding.buttonSave.setOnClickListener { save() }
+
+        binding.buttonSaveAs.setOnClickListener { saveAs() }
+
+        binding.buttonNew.setOnClickListener {
+            AlertDialog.Builder(this)
+                .setIcon(android.R.drawable.ic_dialog_alert)
+                .setTitle("Confirm")
+                .setMessage("Are you sure you want to create a new board?")
+                .setPositiveButton("Yes") { _, _ -> newBoard() }
+                .setNegativeButton("No", null)
+                .show()
+        }
+
+        binding.buttonCropAll.setOnClickListener {
+            AlertDialog.Builder(this)
+                .setIcon(android.R.drawable.ic_dialog_alert)
+                .setTitle("Confirm")
+                .setMessage("Are you sure you want to crop all images? This will permanently modify the images to match their cropped areas, but it can save  space and improve performance.")
+                .setPositiveButton("Yes") { _, _ -> cropAll() }
+                .setNegativeButton("No", null)
+                .show()
+        }
+
+        binding.buttonHideShowUI.setOnCheckedChangeListener { _, isToggled ->
+            setUIVisibility(isToggled)
+        }
+    }
+
+    private fun setupBottomButtons() {
+        binding.buttonAdd.setOnClickListener {
+            addSticker()
+        }
+
+        binding.buttonReset.setOnClickListener {
+            stickerViewModel.resetView()
+        }
+
+        binding.buttonDuplicate.setOnClickListener {
+            stickerViewModel.duplicateCurrentSticker()
+        }
+
+        binding.buttonLock.setOnCheckedChangeListener { _, isToggled ->
+            if (isToggled) {
+                // The change listener is also called if another button is clicked.
+                // So activate this only if the button actually changed its toggle.
+                lockEditMode()
+            }
+            else {
+                // The lock button does not un-toggle itself, as it is the default mode.
+                // It is instead un-toggled once one of the edit modes is activated.
+                if (!binding.buttonScale.isChecked
+                    && !binding.buttonCrop.isChecked
+                    && !binding.buttonRotate.isChecked) {
+                    binding.buttonLock.isChecked = true
+                }
+            }
+        }
+
+        binding.buttonScale.setOnCheckedChangeListener { _, isToggled ->
+            lockEditMode()
+            if (isToggled) {
+                setScaleMode()
+            }
+        }
+
+        binding.buttonResetScale.setOnClickListener {
+            stickerViewModel.resetCurrentStickerZoom()
+        }
+
+        binding.buttonCrop.setOnCheckedChangeListener { _, isToggled ->
+            lockEditMode()
+            if (isToggled) {
+                setCropEditMode()
+            }
+        }
+
+        binding.buttonResetCrop.setOnClickListener {
+            stickerViewModel.resetCurrentStickerCropping()
+        }
+
+        binding.buttonRotate.setOnCheckedChangeListener { _, isToggled ->
+            lockEditMode()
+            if (isToggled) {
+                setRotationEditMode()
+            }
+        }
+
+        binding.buttonResetRotation.setOnClickListener {
+            stickerViewModel.resetCurrentStickerRotation()
+        }
+    }
+
+    private fun lockEditMode() {
+        // If no edit mode is active, reset to locked mode as default.
+        binding.buttonLock.isChecked = true
+        stickerViewModel.isLocked.value = true
+
+        binding.buttonScale.isChecked = false
+
+        binding.buttonCrop.isChecked = false
+        stickerViewModel.isCropActive.value = false
+
+        binding.buttonRotate.isChecked = false
+        stickerViewModel.rotationEnabled.value = false
+    }
+
+    private fun setScaleMode() {
+        // Scale mode is the default edit mode, so there is no special flag.
+        // It's achieved by just being in edit mode without being locked.
+        binding.buttonScale.isChecked = true
+
+        binding.buttonLock.isChecked = false
+        stickerViewModel.isLocked.value = false
+    }
+
+    private fun setCropEditMode() {
+        binding.buttonCrop.isChecked = true
+        stickerViewModel.isCropActive.value = true
+
+        binding.buttonLock.isChecked = false
+        stickerViewModel.isLocked.value = false
+    }
+
+    private fun setRotationEditMode() {
+        binding.buttonRotate.isChecked = true
+        stickerViewModel.rotationEnabled.value = true
+
+        binding.buttonLock.isChecked = false
+        stickerViewModel.isLocked.value = false
+    }
+
+    private fun setUIVisibility(isToggled: Boolean) {
+        if (isToggled) {
+            binding.toolbarLayout.visibility = View.GONE
+            val top = ContextCompat.getDrawable(this, R.drawable.ic_baseline_visibility_off_24)
+            binding.buttonHideShowUI.setCompoundDrawablesWithIntrinsicBounds(null, top, null, null)
+        } else {
+            binding.toolbarLayout.visibility = View.VISIBLE
+            val top = ContextCompat.getDrawable(this, R.drawable.ic_baseline_visibility_24)
+            binding.buttonHideShowUI.setCompoundDrawablesWithIntrinsicBounds(null, top, null, null)
+        }
     }
 
     private fun save() {
@@ -241,7 +502,11 @@ class MainActivity : AppCompatActivity() {
             val cursor: Cursor? = contentResolver.query(uri, null, null, null, null)
             try {
                 if (cursor != null && cursor.moveToFirst()) {
-                    result = cursor.getString(cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME))
+                    var cursorColumnIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (cursorColumnIndex < 0) {
+                        cursorColumnIndex = 0
+                    }
+                    result = cursor.getString(cursorColumnIndex)
                 }
             } finally {
                 cursor?.close()
@@ -354,80 +619,6 @@ class MainActivity : AppCompatActivity() {
         super.onActivityResult(requestCode, resultCode, data)
     }
 
-    private fun setupButtons() {
-        binding.buttonOpen.setOnClickListener { load() }
-
-        binding.buttonSave.setOnClickListener { save() }
-
-        binding.buttonSaveAs.setOnClickListener { saveAs() }
-
-        binding.buttonNew.setOnClickListener {
-            AlertDialog.Builder(this)
-                .setIcon(android.R.drawable.ic_dialog_alert)
-                .setTitle("Confirm")
-                .setMessage("Are you sure you want to create a new board?")
-                .setPositiveButton("Yes") { _, _ -> newBoard() }
-                .setNegativeButton("No", null)
-                .show()
-        }
-
-        binding.buttonCropAll.setOnClickListener {
-            AlertDialog.Builder(this)
-                .setIcon(android.R.drawable.ic_dialog_alert)
-                .setTitle("Confirm")
-                .setMessage("Are you sure you want to crop all images? This will permanently modify the images to match their cropped areas, but it can save  space and improve performance.")
-                .setPositiveButton("Yes") { _, _ -> cropAll() }
-                .setNegativeButton("No", null)
-                .show()
-        }
-
-        binding.buttonAdd.setOnClickListener {
-            addSticker()
-        }
-
-        binding.buttonReset.setOnClickListener { stickerViewModel.resetView() }
-
-        binding.buttonDuplicate.setOnClickListener { stickerViewModel.duplicateCurrentSticker() }
-
-        binding.buttonLock.setOnCheckedChangeListener { _, isToggled ->
-            stickerViewModel.isLocked.value = isToggled
-        }
-
-        binding.buttonCrop.setOnCheckedChangeListener { _, isToggled ->
-            stickerViewModel.isCropActive.value = isToggled
-        }
-
-        binding.buttonResetZoom.setOnClickListener {
-            stickerViewModel.resetCurrentStickerZoom()
-        }
-
-        binding.buttonResetCrop.setOnClickListener {
-            stickerViewModel.resetCurrentStickerCropping()
-        }
-
-        binding.buttonHideShowUI.setOnCheckedChangeListener { _, isToggled ->
-            setUIVisibility(isToggled)
-        }
-        binding.buttonRotate.setOnLongClickListener {
-            stickerViewModel.resetCurrentStickerRotation();
-            true
-        }
-    }
-
-    private fun setUIVisibility(isToggled: Boolean) {
-        if (isToggled) {
-            binding.toolbarTop.visibility = View.GONE;
-            binding.toolbarBottom.visibility = View.GONE;
-            val top = ContextCompat.getDrawable(this, R.drawable.ic_baseline_visibility_off_24)
-            binding.buttonHideShowUI.setCompoundDrawablesWithIntrinsicBounds(null, top, null, null)
-        } else {
-            binding.toolbarTop.visibility = View.VISIBLE;
-            binding.toolbarBottom.visibility = View.VISIBLE;
-            val top = ContextCompat.getDrawable(this, R.drawable.ic_baseline_visibility_24)
-            binding.buttonHideShowUI.setCompoundDrawablesWithIntrinsicBounds(null, top, null, null)
-        }
-    }
-
     override fun onBackPressed() {
         AlertDialog.Builder(this)
             .setIcon(android.R.drawable.ic_dialog_alert)
@@ -454,18 +645,19 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    internal class FetchImageFromLinkTask(val text: String, val context: MainActivity) :
-        AsyncTask<Void, Void, Void>() {
+    internal class FetchImageFromLinkTask(val text: String, val context: MainActivity) : AsyncTask<Void, Void, Void>() {
+        @SuppressLint("StaticFieldLeak")
+        val progressBarHolder: View = context.findViewById(R.id.progressBarHolder)
+
         override fun onPreExecute() {
             super.onPreExecute()
-            context.binding.activityMain.progressBarHolder.visibility = View.VISIBLE
+            progressBarHolder.visibility = View.VISIBLE
         }
 
         override fun doInBackground(vararg params: Void?): Void? {
             try {
                 val fuel = FuelManager()
-                fuel.baseHeaders =
-                    mapOf(Headers.USER_AGENT to "Mozilla/5.0 (X11; Linux x86_64; rv:76.0) Gecko/20100101 Firefox/76.0")
+                fuel.baseHeaders = mapOf(Headers.USER_AGENT to "Mozilla/5.0 (X11; Linux x86_64; rv:76.0) Gecko/20100101 Firefox/76.0")
 
                 fuel.head(text).response { _, head, result ->
                     result.fold({
@@ -473,7 +665,7 @@ class MainActivity : AppCompatActivity() {
                         if (!contentType.any { it.startsWith("image/") }) {
                             Toast.makeText(context, "Link is not an image", Toast.LENGTH_LONG)
                                 .show()
-                            context.binding.activityMain.progressBarHolder.visibility = View.GONE
+                            progressBarHolder.visibility = View.GONE
                             return@response
                         }
 
@@ -482,7 +674,7 @@ class MainActivity : AppCompatActivity() {
                                 body.fold({
                                     val bitmap = BitmapFactory.decodeByteArray(it, 0, it.size)
                                     context.doAddSticker(bitmap)
-                                    context.binding.activityMain.progressBarHolder.visibility =
+                                    progressBarHolder.visibility =
                                         View.GONE
                                 }, {
                                     Toast.makeText(
@@ -491,13 +683,13 @@ class MainActivity : AppCompatActivity() {
                                         Toast.LENGTH_LONG
                                     )
                                         .show()
-                                    context.binding.activityMain.progressBarHolder.visibility =
+                                    progressBarHolder.visibility =
                                         View.GONE
                                     Timber.e(it)
                                 })
                             }
                     }, {
-                        context.binding.activityMain.progressBarHolder.visibility = View.GONE
+                        progressBarHolder.visibility = View.GONE
                         Toast.makeText(context, "Failed to download image", Toast.LENGTH_LONG)
                             .show()
                         Timber.e(it)
@@ -506,7 +698,7 @@ class MainActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 Timber.e(e)
                 Toast.makeText(context, "Invalid link", Toast.LENGTH_LONG).show()
-                context.binding.activityMain.progressBarHolder.visibility = View.GONE
+                progressBarHolder.visibility = View.GONE
             }
             return null
         }

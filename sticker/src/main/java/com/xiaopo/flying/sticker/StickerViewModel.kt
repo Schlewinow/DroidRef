@@ -29,6 +29,8 @@ open class StickerViewModel :
 
     var stickers: MutableLiveData<ArrayList<Sticker>> = MutableLiveData(ArrayList())
     var icons: MutableLiveData<ArrayList<BitmapStickerIcon>> = MutableLiveData(ArrayList())
+    var rotateIcons: MutableLiveData<ArrayList<BitmapStickerIcon>> = MutableLiveData(ArrayList())
+    var cropIcons: MutableLiveData<ArrayList<BitmapStickerIcon>> = MutableLiveData(ArrayList())
     var activeIcons: MutableLiveData<List<BitmapStickerIcon>> = MutableLiveData(ArrayList(4))
     var handlingSticker: MutableLiveData<Sticker?> = MutableLiveData(null)
 
@@ -44,8 +46,8 @@ open class StickerViewModel :
 
     lateinit var stickerOperationListener: StickerView.OnStickerOperationListener
 
+    private val stickerWorldTransform = StickerTransform(null)
     private val stickerWorldMatrix = Matrix()
-    private val stickerScreenMatrix = Matrix()
     private val moveMatrix = Matrix()
     private val point = FloatArray(2)
     private val currentCenterPoint = PointF()
@@ -64,7 +66,6 @@ open class StickerViewModel :
 
     private var oldDistance = 0f
     private var oldRotation = 0f
-    private var previousRotation = 0f
 
     private var lastClickTime: Long = 0
 
@@ -103,7 +104,6 @@ open class StickerViewModel :
 
     fun addSticker(sticker: Sticker, position: Int) {
         sticker.setCanvasMatrix(canvasMatrix.value!!.getMatrix())
-        sticker.recalcFinalMatrix()
         stickers.value!!.add(sticker)
         handlingSticker.value = sticker
         stickerOperationListener.onStickerAdded(sticker, position)
@@ -172,14 +172,7 @@ open class StickerViewModel :
 
     private fun resetStickerZoom(sticker: Sticker) {
         if (isLocked.value != true) {
-            val temp2 = floatArrayOf(sticker.centerPoint.x, sticker.centerPoint.y)
-            sticker.matrix.mapPoints(temp2)
-            sticker.matrix.reset()
-            sticker.matrix.postTranslate(
-                temp2[0] - sticker.width / 2f,
-                temp2[1] - sticker.height / 2f
-            )
-            sticker.recalcFinalMatrix()
+            sticker.transform.setScaling(1f, 1f)
             stickerOperationListener.onInvalidateView()
         }
     }
@@ -189,13 +182,11 @@ open class StickerViewModel :
     }
 
     private fun resetStickerRotation(sticker: Sticker) {
-        val rotation = if (sticker.isFlippedVertically) sticker.currentAngle;
-            else -sticker.currentAngle
-        sticker.matrix.postRotate(rotation, sticker.mappedCenterPoint.x,
-            sticker.mappedCenterPoint.y)
-        stickerOperationListener.onInvalidateView()
+        if (isLocked.value != true) {
+            sticker.transform.rotation = 0f
+            stickerOperationListener.onInvalidateView()
+        }
     }
-
 
     private fun handleCanvasMotion(view: StickerView, event: MotionEvent): Boolean {
         handlingSticker.value = null
@@ -216,7 +207,7 @@ open class StickerViewModel :
                     }
                 }
                 oldDistance = StickerMath.calculateDistance(event)
-                oldRotation = StickerMath.calculateRotation(event)
+                oldRotation = StickerMath.calculateAngle(event)
                 midPoint = calculateMidPoint(event)
                 stickerWorldMatrix.set(canvasMatrix.value!!.getMatrix())
                 currentMode.value = ActionMode.CANVAS_ZOOM_WITH_TWO_FINGER
@@ -255,9 +246,9 @@ open class StickerViewModel :
     protected fun onTouchDownCanvas(event: MotionEvent): Boolean {
         currentMode.value = ActionMode.CANVAS_DRAG
         calculateDown(event)
-        midPoint = calculateMidPoint()
+        midPoint = calculateMidPoint(handlingSticker.value)
         oldDistance = StickerMath.calculateDistance(midPoint.x, midPoint.y, downX, downY)
-        oldRotation = StickerMath.calculateRotation(midPoint.x, midPoint.y, downX, downY)
+        oldRotation = StickerMath.calculateAngle(midPoint.x, midPoint.y, downX, downY)
         stickerWorldMatrix.set(canvasMatrix.value!!.getMatrix())
         return true
     }
@@ -279,13 +270,11 @@ open class StickerViewModel :
             }
             ActionMode.CANVAS_ZOOM_WITH_TWO_FINGER -> {
                 val newDistance = StickerMath.calculateDistance(event)
-                //float newRotation = StickerMath.calculateRotation(event);
                 moveMatrix.set(stickerWorldMatrix)
                 moveMatrix.postScale(
                     newDistance / oldDistance, newDistance / oldDistance, midPoint.x,
                     midPoint.y
                 )
-                //moveMatrix.postRotate(newRotation - oldRotation, midPoint.x, midPoint.y);
                 canvasMatrix.value!!.setMatrix(moveMatrix)
                 updateCanvasMatrix()
             }
@@ -304,9 +293,7 @@ open class StickerViewModel :
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 //                Timber.d("MotionEvent.ACTION_DOWN event__: %s", event.toString());
-                if (onStickerAreaTouchListener != null) {
-                    onStickerAreaTouchListener.onStickerAreaTouch()
-                }
+                onStickerAreaTouchListener?.onStickerAreaTouch()
                 if (!onTouchDown(view, event)) {
                     return if (mustLockToPan.value != true) {
                         handleCanvasMotion(view, event)
@@ -343,7 +330,7 @@ open class StickerViewModel :
         calculateDown(event)
         midPoint = StickerMath.calculateMidPoint(handlingSticker.value)
         oldDistance = StickerMath.calculateDistance(midPoint.x, midPoint.y, downX, downY)
-        oldRotation = StickerMath.calculateRotation(midPoint.x, midPoint.y, downX, downY)
+        oldRotation = StickerMath.calculateAngle(midPoint.x, midPoint.y, downXScaled, downYScaled)
         currentIcon.value = findCurrentIconTouched()
 
         // HACK if application logic is really meant to be handled in the ViewModel, how do you
@@ -360,12 +347,14 @@ open class StickerViewModel :
         }
 
        handlingSticker.value?.let {
-            stickerWorldMatrix.set(it.getMatrix())
-            stickerScreenMatrix.set(it.getFinalMatrix())
+            stickerWorldMatrix.set(it.transform.matrix)
+            stickerWorldTransform.copyFrom(it.transform)
+
             if (bringToFrontCurrentSticker.value == true) {
                 stickers.value!!.remove(it)
                 stickers.value!!.add(it)
             }
+
             stickerOperationListener.onStickerTouchedDown(it)
         }
         return currentIcon.value != null || handlingSticker.value != null
@@ -384,7 +373,7 @@ open class StickerViewModel :
             ) < touchSlop && handlingSticker.value != null
         ) {
             currentMode.value = ActionMode.CLICK
-                stickerOperationListener.onStickerClicked(handlingSticker.value!!)
+            stickerOperationListener.onStickerClicked(handlingSticker.value!!)
             if (currentTime - lastClickTime < minClickDelayTime) {
                 stickerOperationListener.onStickerDoubleTapped(handlingSticker.value!!)
             }
@@ -404,91 +393,87 @@ open class StickerViewModel :
         return PointF(vec[0], vec[1])
     }
 
-    protected fun handleMoveAction(view: StickerView, event: MotionEvent) {
+    private fun handleMoveAction(view: StickerView, event: MotionEvent) {
         when (currentMode.value) {
             ActionMode.NONE, ActionMode.CLICK -> {
             }
+
             ActionMode.DRAG -> if (handlingSticker.value != null) {
-                moveMatrix.set(stickerWorldMatrix)
                 val vec = screenToWorld(event.x - downX, event.y - downY)
-                moveMatrix.postTranslate(vec.x, vec.y)
-                handlingSticker.value!!.setMatrix(moveMatrix)
+                val newPosX = stickerWorldTransform.position.x + vec.x
+                val newPosY = stickerWorldTransform.position.y + vec.y
+                handlingSticker.value!!.transform.setPosition(newPosX, newPosY)
+
                 if (constrained.value == true) {
                     constrainSticker(view, handlingSticker.value!!)
                 }
                 stickerOperationListener.onStickerMoved(handlingSticker.value!!)
             }
+
+            // ToDo: couldn't get into this case so far, so no idea if it works after the refactoring
             ActionMode.ZOOM_WITH_TWO_FINGER -> if (handlingSticker.value != null) {
                 val newDistance = StickerMath.calculateDistanceScaled(event, canvasMatrix.value!!.getMatrix())
-                val newRotation = StickerMath.calculateRotation(event)
+                val newRotation = StickerMath.calculateAngle(event)
                 moveMatrix.set(stickerWorldMatrix)
-                moveMatrix.postScale(
-                    newDistance / oldDistance, newDistance / oldDistance, midPoint.x,
-                    midPoint.y
-                )
-                if (rotationEnabled.value == true) {
-                    moveMatrix.postRotate(newRotation - oldRotation, midPoint.x, midPoint.y)
+
+                if (rotationEnabled.value == false) {
+                    val newScaleX = stickerWorldTransform.scaling.x * (newDistance / oldDistance)
+                    val newScaleY = stickerWorldTransform.scaling.y * (newDistance / oldDistance)
+                    handlingSticker.value!!.transform.setScaling(newScaleX, newScaleY)
                 }
-                handlingSticker.value!!.setMatrix(moveMatrix)
+                else {
+                    val deltaRotation = newRotation - oldRotation
+                    handlingSticker.value!!.transform.rotation = stickerWorldTransform.rotation + deltaRotation
+                }
             }
+
             ActionMode.ICON -> if (handlingSticker.value != null && currentIcon.value != null) {
                 currentIcon.value!!.onActionMove(view, this, event)
             }
         }
     }
 
-    fun zoomAndRotateCurrentSticker(event: MotionEvent) {
-        zoomAndRotateSticker(handlingSticker.value, event)
+    fun zoomAndRotateCurrentSticker(event: MotionEvent, horizontalScale: Boolean, verticalScale: Boolean) {
+        zoomAndRotateSticker(handlingSticker.value, event, horizontalScale, verticalScale)
     }
 
-    fun zoomAndRotateSticker(sticker: Sticker?, event: MotionEvent) {
+    private fun zoomAndRotateSticker(sticker: Sticker?, event: MotionEvent, horizontalScale: Boolean, verticalScale: Boolean) {
         if (sticker != null) {
             val temp = floatArrayOf(event.x, event.y)
-            val a = Matrix()
-            canvasMatrix.value!!.invert(a)
-            a.mapPoints(temp)
-            val temp2 = floatArrayOf(sticker.centerPointCropped.x, sticker.centerPointCropped.y)
-            stickerWorldMatrix.mapPoints(temp2)
-            //canvasMatrix.mapPoints(temp2);
-            midPoint.x = temp2[0]
-            midPoint.y = temp2[1]
-            val oldDistance = StickerMath.calculateDistance(
-                midPoint.x,
-                midPoint.y,
-                downXScaled,
-                downYScaled
-            )
-            val newDistance = StickerMath.calculateDistance(
-                midPoint.x,
-                midPoint.y,
-                temp[0],
-                temp[1]
-            )
-            val newRotation = StickerMath.calculateRotation(
-                midPoint.x,
-                midPoint.y,
-                temp[0],
-                temp[1]
-            )
-            moveMatrix.set(stickerWorldMatrix)
-            moveMatrix.postScale(
-                newDistance / oldDistance,
-                newDistance / oldDistance,
-                midPoint.x,
-                midPoint.y
-            )
-            if (rotationEnabled.value == true) {
-                moveMatrix.postRotate(newRotation - oldRotation, midPoint.x, midPoint.y)
+            val invertCanvasMatrix = Matrix()
+            canvasMatrix.value!!.invert(invertCanvasMatrix)
+            invertCanvasMatrix.mapPoints(temp)
+            val touchPoint = PointF(temp[0], temp[1])
+
+            midPoint = calculateMidPoint(sticker)
+
+            val oldDistance = StickerMath.calculateDistance(midPoint.x, midPoint.y, downXScaled, downYScaled)
+            val newDistance = StickerMath.calculateDistance(midPoint.x, midPoint.y, touchPoint.x, touchPoint.y)
+            val newRotation = StickerMath.calculateAngle(midPoint.x, midPoint.y, touchPoint.x, touchPoint.y)
+
+            if (rotationEnabled.value == false) {
+                var newScaleX = stickerWorldTransform.scaling.x
+                if (horizontalScale) {
+                    newScaleX *= newDistance / oldDistance
+                }
+                var newScaleY = stickerWorldTransform.scaling.y
+                if (verticalScale) {
+                    newScaleY *= newDistance / oldDistance
+                }
+                handlingSticker.value!!.transform.setScaling(newScaleX, newScaleY)
             }
-            handlingSticker.value!!.setMatrix(moveMatrix)
+            else {
+                val deltaRotation = newRotation - oldRotation
+                handlingSticker.value!!.transform.rotation = stickerWorldTransform.rotation + deltaRotation
+            }
         }
     }
 
-    protected fun constrainSticker(view: StickerView, sticker: Sticker) {
+    private fun constrainSticker(view: StickerView, sticker: Sticker) {
         var moveX = 0f
         var moveY = 0f
-        val width: Int = view.getWidth()
-        val height: Int = view.getHeight()
+        val width: Int = view.width
+        val height: Int = view.height
         sticker.getMappedCenterPoint(currentCenterPoint, point, tmp)
         if (currentCenterPoint.x < 0) {
             moveX = -currentCenterPoint.x
@@ -502,7 +487,7 @@ open class StickerViewModel :
         if (currentCenterPoint.y > height) {
             moveY = height - currentCenterPoint.y
         }
-        sticker.matrix.postTranslate(moveX, moveY)
+        sticker.transform.translate(moveX, moveY)
     }
 
     fun cropCurrentSticker(event: MotionEvent, gravity: Int) {
@@ -517,6 +502,10 @@ open class StickerViewModel :
                     BitmapStickerIcon.LEFT_BOTTOM -> BitmapStickerIcon.RIGHT_TOP
                     BitmapStickerIcon.RIGHT_TOP -> BitmapStickerIcon.LEFT_BOTTOM
                     BitmapStickerIcon.RIGHT_BOTTOM -> BitmapStickerIcon.LEFT_TOP
+                    BitmapStickerIcon.LEFT_CENTER -> BitmapStickerIcon.RIGHT_CENTER
+                    BitmapStickerIcon.RIGHT_CENTER -> BitmapStickerIcon.LEFT_CENTER
+                    BitmapStickerIcon.TOP_CENTER -> BitmapStickerIcon.BOTTOM_CENTER
+                    BitmapStickerIcon.BOTTOM_CENTER -> BitmapStickerIcon.TOP_CENTER
                     else -> gravity
                 }
             } else {
@@ -525,6 +514,8 @@ open class StickerViewModel :
                     BitmapStickerIcon.LEFT_BOTTOM -> BitmapStickerIcon.RIGHT_BOTTOM
                     BitmapStickerIcon.RIGHT_TOP -> BitmapStickerIcon.LEFT_TOP
                     BitmapStickerIcon.RIGHT_BOTTOM -> BitmapStickerIcon.LEFT_BOTTOM
+                    BitmapStickerIcon.LEFT_CENTER -> BitmapStickerIcon.RIGHT_CENTER
+                    BitmapStickerIcon.RIGHT_CENTER -> BitmapStickerIcon.LEFT_CENTER
                     else -> gravity
                 }
             }
@@ -535,6 +526,8 @@ open class StickerViewModel :
                     BitmapStickerIcon.LEFT_BOTTOM -> BitmapStickerIcon.LEFT_TOP
                     BitmapStickerIcon.RIGHT_TOP -> BitmapStickerIcon.RIGHT_BOTTOM
                     BitmapStickerIcon.RIGHT_BOTTOM -> BitmapStickerIcon.RIGHT_TOP
+                    BitmapStickerIcon.TOP_CENTER -> BitmapStickerIcon.BOTTOM_CENTER
+                    BitmapStickerIcon.BOTTOM_CENTER -> BitmapStickerIcon.TOP_CENTER
                     else -> gravity
                 }
             } else {
@@ -543,7 +536,7 @@ open class StickerViewModel :
         }
 
 
-    protected fun cropSticker(sticker: Sticker?, event: MotionEvent, gravity: Int) {
+    private fun cropSticker(sticker: Sticker?, event: MotionEvent, gravity: Int) {
         if (sticker == null) {
             return
         }
@@ -552,7 +545,7 @@ open class StickerViewModel :
         val inv = Matrix()
         sticker.canvasMatrix.invert(inv)
         val inv2 = Matrix()
-        sticker.matrix.invert(inv2)
+        sticker.transform.matrix.invert(inv2)
         val temp = floatArrayOf(dx, dy)
         inv.mapPoints(temp)
         inv2.mapPoints(temp)
@@ -578,6 +571,18 @@ open class StickerViewModel :
                 cropped.right = Math.max(px.toFloat(), cropped.left)
                 cropped.bottom = Math.max(py.toFloat(), cropped.top)
             }
+            BitmapStickerIcon.LEFT_CENTER -> {
+                cropped.left = Math.min(px.toFloat(), cropped.right)
+            }
+            BitmapStickerIcon.RIGHT_CENTER -> {
+                cropped.right = Math.max(px.toFloat(), cropped.left)
+            }
+            BitmapStickerIcon.TOP_CENTER -> {
+                cropped.top = Math.min(py.toFloat(), cropped.bottom)
+            }
+            BitmapStickerIcon.BOTTOM_CENTER -> {
+                cropped.bottom = Math.max(py.toFloat(), cropped.top)
+            }
         }
         sticker.setCroppedBounds(cropped)
     }
@@ -591,7 +596,7 @@ open class StickerViewModel :
         addSticker(newSticker)
     }
 
-    protected fun findCurrentIconTouched(): BitmapStickerIcon? {
+    private fun findCurrentIconTouched(): BitmapStickerIcon? {
         for (icon in activeIcons.value!!) {
             val x: Float = icon.x + icon.iconRadius - downXScaled
             val y: Float = icon.y + icon.iconRadius - downYScaled
@@ -607,34 +612,31 @@ open class StickerViewModel :
     /**
      * find the touched Sticker
      */
-    protected fun findHandlingSticker(): Sticker? {
+    private fun findHandlingSticker(): Sticker? {
         stickers.value?.let {
-            for (i in it.indices.reversed()) {
-                if (isInStickerAreaCropped(it[i], downX, downY)) {
-                    return it[i]
+            for (index in it.indices.reversed()) {
+                val sticker = it[index]
+                if (sticker.isEditable && isInStickerAreaCropped(sticker, downX, downY)) {
+                    return sticker
                 }
             }
         }
         return null
     }
 
-    protected fun isInStickerArea(sticker: Sticker, downX: Float, downY: Float): Boolean {
-        tmp[0] = downX
-        tmp[1] = downY
-        return sticker.contains(tmp)
-    }
-
-    protected fun isInStickerAreaCropped(sticker: Sticker, downX: Float, downY: Float): Boolean {
+    private fun isInStickerAreaCropped(sticker: Sticker, downX: Float, downY: Float): Boolean {
         tmp[0] = downX
         tmp[1] = downY
         return sticker.containsCropped(tmp)
     }
 
-    protected fun calculateMidPoint(event: MotionEvent?): PointF {
+    private fun calculateMidPoint(event: MotionEvent?): PointF {
+        val midPoint = PointF()
         if (event == null || event.pointerCount < 2) {
             midPoint.set(0f, 0f)
             return midPoint
         }
+
         val pts = floatArrayOf(event.getX(0), event.getY(0), event.getX(1), event.getY(1))
         //canvasMatrix.mapPoints(pts);
         val x = (pts[0] + pts[2]) / 2
@@ -643,7 +645,18 @@ open class StickerViewModel :
         return midPoint
     }
 
-    protected fun calculateDown(event: MotionEvent?) {
+    private fun calculateMidPoint(sticker: Sticker?): PointF {
+        val midPoint = PointF()
+        if (sticker == null) {
+            midPoint.set(0f, 0f)
+            return midPoint
+        }
+
+        sticker.getMappedCenterPointCropped(midPoint, point, tmp)
+        return midPoint
+    }
+
+    private fun calculateDown(event: MotionEvent?) {
         if (event == null || event.pointerCount < 1) {
             downX = 0f
             downY = 0f
@@ -661,16 +674,6 @@ open class StickerViewModel :
         downYScaled = pts[1]
     }
 
-    protected fun calculateMidPoint(): PointF {
-        if (handlingSticker.value == null) {
-            midPoint.set(0f, 0f)
-            return midPoint
-        }
-        handlingSticker.value!!.getMappedCenterPoint(midPoint, point, tmp)
-        return midPoint
-    }
-
-
     fun flipCurrentSticker(direction: Int) {
         handlingSticker.value?.let { flip(it, direction) }
     }
@@ -678,22 +681,11 @@ open class StickerViewModel :
     private fun flip(sticker: Sticker, @Flip direction: Int) {
         sticker.getCenterPoint(midPoint)
         if (direction and StickerView.FLIP_HORIZONTALLY > 0) {
-            sticker.matrix.preScale(-1f, 1f, midPoint.x, midPoint.y)
             sticker.isFlippedHorizontally = !sticker.isFlippedHorizontally
         }
         if (direction and StickerView.FLIP_VERTICALLY > 0) {
-            sticker.matrix.preScale(1f, -1f, midPoint.x, midPoint.y)
             sticker.isFlippedVertically = !sticker.isFlippedVertically
         }
-        sticker.recalcFinalMatrix()
         stickerOperationListener.onStickerFlipped(sticker)
-    }
-
-    fun showCurrentSticker() {
-        handlingSticker.value?.setVisible(true)
-    }
-
-    fun hideCurrentSticker() {
-        handlingSticker.value?.setVisible(false)
     }
 }
