@@ -48,7 +48,6 @@ open class StickerViewModel :
 
     private val stickerWorldTransform = StickerTransform(null)
     private val stickerWorldMatrix = Matrix()
-    private val stickerScreenMatrix = Matrix()
     private val moveMatrix = Matrix()
     private val point = FloatArray(2)
     private val currentCenterPoint = PointF()
@@ -350,7 +349,6 @@ open class StickerViewModel :
        handlingSticker.value?.let {
             stickerWorldMatrix.set(it.transform.matrix)
             stickerWorldTransform.copyFrom(it.transform)
-            stickerScreenMatrix.set(it.getFinalMatrix())
 
             if (bringToFrontCurrentSticker.value == true) {
                 stickers.value!!.remove(it)
@@ -616,9 +614,10 @@ open class StickerViewModel :
      */
     private fun findHandlingSticker(): Sticker? {
         stickers.value?.let {
-            for (i in it.indices.reversed()) {
-                if (isInStickerAreaCropped(it[i], downX, downY)) {
-                    return it[i]
+            for (index in it.indices.reversed()) {
+                val sticker = it[index]
+                if (sticker.isEditable && isInStickerAreaCropped(sticker, downX, downY)) {
+                    return sticker
                 }
             }
         }

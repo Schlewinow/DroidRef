@@ -4,12 +4,12 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.AlertDialog
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.database.Cursor
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.os.AsyncTask
@@ -24,6 +24,7 @@ import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.res.ResourcesCompat
 import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.ViewModelProvider
 import com.github.kittinunf.fuel.core.FuelManager
@@ -67,6 +68,15 @@ class MainActivity : AppCompatActivity() {
         setupCropStickerIcons()
         setupTopButtons()
         setupBottomButtons()
+
+        if (stickerViewModel.stickers.value!!.isEmpty()) {
+            // Marker at the center (0,0) of the coordinate system for better user navigation experience.
+            val centerMarkerSticker = DrawableSticker(
+                ResourcesCompat.getDrawable(resources, R.drawable.marker_center, null))
+            centerMarkerSticker.setAlpha(64)
+            centerMarkerSticker.isEditable = false
+            stickerViewModel.addSticker(centerMarkerSticker)
+        }
 
         // When the app starts, set locked edit mode as default.
         lockEditMode()
@@ -184,7 +194,7 @@ class MainActivity : AppCompatActivity() {
             ZoomIconEvent())
 
         val rotateLeftIcon = setupStickerIcon(
-            R.drawable.icon_rotate_left_2,
+            R.drawable.icon_rotate_left,
             BitmapStickerIcon.LEFT_BOTTOM,
             RotateLeftEvent())
 

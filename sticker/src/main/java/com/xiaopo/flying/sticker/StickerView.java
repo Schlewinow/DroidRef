@@ -131,16 +131,13 @@ public class StickerView extends FrameLayout {
     }
 
     public void configDefaultIcons() {
-        BitmapStickerIcon deleteIcon = new BitmapStickerIcon(
-                getContext(), R.drawable.ic_close, BitmapStickerIcon.LEFT_TOP);
+        BitmapStickerIcon deleteIcon = new BitmapStickerIcon(getContext(), R.drawable.ic_close, BitmapStickerIcon.LEFT_TOP);
         deleteIcon.setIconEvent(new DeleteIconEvent());
 
-        BitmapStickerIcon zoomIcon = new BitmapStickerIcon(
-                getContext(), R.drawable.ic_scale, BitmapStickerIcon.RIGHT_BOTTOM);
+        BitmapStickerIcon zoomIcon = new BitmapStickerIcon(getContext(), R.drawable.ic_scale, BitmapStickerIcon.RIGHT_BOTTOM);
         zoomIcon.setIconEvent(new ZoomIconEvent());
 
-        BitmapStickerIcon flipIcon = new BitmapStickerIcon(
-                getContext(), R.drawable.ic_flip, BitmapStickerIcon.RIGHT_TOP);
+        BitmapStickerIcon flipIcon = new BitmapStickerIcon(getContext(), R.drawable.ic_flip, BitmapStickerIcon.RIGHT_TOP);
         flipIcon.setIconEvent(new FlipHorizontallyEvent());
 
         icons.clear();
@@ -148,12 +145,10 @@ public class StickerView extends FrameLayout {
         icons.add(zoomIcon);
         icons.add(flipIcon);
 
-        BitmapStickerIcon rotateDeleteIcon = new BitmapStickerIcon(
-                getContext(), R.drawable.ic_close, BitmapStickerIcon.LEFT_TOP);
+        BitmapStickerIcon rotateDeleteIcon = new BitmapStickerIcon(getContext(), R.drawable.ic_close, BitmapStickerIcon.LEFT_TOP);
         deleteIcon.setIconEvent(new DeleteIconEvent());
 
-        BitmapStickerIcon rotateIcon = new BitmapStickerIcon(
-                getContext(), R.drawable.ic_scale, BitmapStickerIcon.RIGHT_BOTTOM);
+        BitmapStickerIcon rotateIcon = new BitmapStickerIcon(getContext(), R.drawable.ic_scale, BitmapStickerIcon.RIGHT_BOTTOM);
         zoomIcon.setIconEvent(new ZoomIconEvent());
 
         rotateIcons.clear();
