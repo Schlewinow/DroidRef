@@ -30,6 +30,7 @@ open class StickerViewModel :
     var stickers: MutableLiveData<ArrayList<Sticker>> = MutableLiveData(ArrayList())
     var icons: MutableLiveData<ArrayList<BitmapStickerIcon>> = MutableLiveData(ArrayList())
     var rotateIcons: MutableLiveData<ArrayList<BitmapStickerIcon>> = MutableLiveData(ArrayList())
+    var cropIcons: MutableLiveData<ArrayList<BitmapStickerIcon>> = MutableLiveData(ArrayList())
     var activeIcons: MutableLiveData<List<BitmapStickerIcon>> = MutableLiveData(ArrayList(4))
     var handlingSticker: MutableLiveData<Sticker?> = MutableLiveData(null)
 
@@ -574,11 +575,15 @@ open class StickerViewModel :
             }
             BitmapStickerIcon.LEFT_CENTER -> {
                 cropped.left = Math.min(px.toFloat(), cropped.right)
-                cropped.bottom += cropped.height() * 0.5f
             }
             BitmapStickerIcon.RIGHT_CENTER -> {
                 cropped.right = Math.max(px.toFloat(), cropped.left)
-                cropped.bottom += cropped.height() * 0.5f
+            }
+            BitmapStickerIcon.TOP_CENTER -> {
+                cropped.top = Math.min(py.toFloat(), cropped.bottom)
+            }
+            BitmapStickerIcon.BOTTOM_CENTER -> {
+                cropped.bottom = Math.max(py.toFloat(), cropped.top)
             }
         }
         sticker.setCroppedBounds(cropped)

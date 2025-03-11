@@ -4,6 +4,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.database.Cursor
@@ -29,6 +30,7 @@ import com.github.kittinunf.fuel.core.FuelManager
 import com.github.kittinunf.fuel.core.Headers
 import com.xiaopo.flying.sticker.*
 import com.xiaopo.flying.sticker.StickerView.OnStickerOperationListener
+import com.xiaopo.flying.sticker.iconEvents.CropIconEvent
 import com.xiaopo.flying.sticker.iconEvents.DeleteIconEvent
 import com.xiaopo.flying.sticker.iconEvents.FlipHorizontallyEvent
 import com.xiaopo.flying.sticker.iconEvents.FlipVerticallyEvent
@@ -60,8 +62,9 @@ class MainActivity : AppCompatActivity() {
         binding.executePendingBindings()
         binding.lifecycleOwner = this
 
-        setupDefaultStickerIcons()
+        setupScaleStickerIcons()
         setupRotateStickerIcons()
+        setupCropStickerIcons()
         setupTopButtons()
         setupBottomButtons()
 
@@ -123,62 +126,40 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupDefaultStickerIcons() {
-        //currently you can config your own icons and icon event
-        //the event you can custom
-        val deleteIcon = BitmapStickerIcon(
-            ContextCompat.getDrawable(
-                this,
-                com.xiaopo.flying.sticker.R.drawable.sticker_ic_close_white_18dp
-            ),
-            BitmapStickerIcon.LEFT_TOP
-        )
-        deleteIcon.iconEvent = DeleteIconEvent()
+    /**
+     * It's possible to override the sticker action icons.
+     * Create custom actions for the scale sticker icons.
+     */
+    private fun setupScaleStickerIcons() {
+        val deleteIcon = setupStickerIcon(
+            com.xiaopo.flying.sticker.R.drawable.sticker_ic_close_white_18dp,
+            BitmapStickerIcon.LEFT_TOP,
+            DeleteIconEvent())
 
-        val zoomIcon = BitmapStickerIcon(
-            ContextCompat.getDrawable(
-                this,
-                R.drawable.icon_scale
-            ),
-            BitmapStickerIcon.RIGHT_BOTTOM
-        )
-        zoomIcon.iconEvent = ZoomIconEvent()
+        val zoomIcon = setupStickerIcon(
+            R.drawable.icon_scale,
+            BitmapStickerIcon.RIGHT_BOTTOM,
+            ZoomIconEvent())
 
-        val flipIcon = BitmapStickerIcon(
-            ContextCompat.getDrawable(
-                this,
-                com.xiaopo.flying.sticker.R.drawable.sticker_ic_flip_white_18dp
-            ),
-            BitmapStickerIcon.RIGHT_TOP
-        )
-        flipIcon.iconEvent = FlipHorizontallyEvent()
+        val flipIcon = setupStickerIcon(
+            com.xiaopo.flying.sticker.R.drawable.sticker_ic_flip_white_18dp,
+            BitmapStickerIcon.RIGHT_TOP,
+            FlipHorizontallyEvent())
 
-        val flipVerticallyIcon = BitmapStickerIcon(
-            ContextCompat.getDrawable(
-                this,
-                com.xiaopo.flying.sticker.R.drawable.sticker_ic_flip_vert_white_18dp
-            ),
-            BitmapStickerIcon.LEFT_BOTTOM
-        )
-        flipVerticallyIcon.iconEvent = FlipVerticallyEvent()
+        val flipVerticallyIcon = setupStickerIcon(
+            com.xiaopo.flying.sticker.R.drawable.sticker_ic_flip_vert_white_18dp,
+            BitmapStickerIcon.LEFT_BOTTOM,
+            FlipVerticallyEvent())
 
-        val scaleVerticalIcon = BitmapStickerIcon(
-            ContextCompat.getDrawable(
-                this,
-                R.drawable.icon_scale_vertical
-            ),
-            BitmapStickerIcon.BOTTOM_CENTER
-        )
-        scaleVerticalIcon.iconEvent = ZoomIconEvent(false, true)
+        val scaleVerticalIcon = setupStickerIcon(
+            R.drawable.icon_scale_vertical,
+            BitmapStickerIcon.BOTTOM_CENTER,
+            ZoomIconEvent(false, true))
 
-        val scaleHorizontalIcon = BitmapStickerIcon(
-            ContextCompat.getDrawable(
-                this,
-                R.drawable.icon_scale_horizontal
-            ),
-            BitmapStickerIcon.RIGHT_CENTER
-        )
-        scaleHorizontalIcon.iconEvent = ZoomIconEvent(true, false)
+        val scaleHorizontalIcon = setupStickerIcon(
+            R.drawable.icon_scale_horizontal,
+            BitmapStickerIcon.RIGHT_CENTER,
+            ZoomIconEvent(true, false))
 
         stickerViewModel.icons.value = arrayListOf(
             deleteIcon,
@@ -192,43 +173,25 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupRotateStickerIcons() {
-        //currently you can config your own icons and icon event
-        //the event you can custom
-        val deleteIcon = BitmapStickerIcon(
-            ContextCompat.getDrawable(
-                this,
-                com.xiaopo.flying.sticker.R.drawable.sticker_ic_close_white_18dp
-            ),
-            BitmapStickerIcon.LEFT_TOP
-        )
-        deleteIcon.iconEvent = DeleteIconEvent()
+        val deleteIcon = setupStickerIcon(
+            com.xiaopo.flying.sticker.R.drawable.sticker_ic_close_white_18dp,
+            BitmapStickerIcon.LEFT_TOP,
+            DeleteIconEvent())
 
-        val rotateIcon = BitmapStickerIcon(
-            ContextCompat.getDrawable(
-                this,
-                R.drawable.icon_rotate_circle
-            ),
-            BitmapStickerIcon.RIGHT_BOTTOM
-        )
-        rotateIcon.iconEvent = ZoomIconEvent()
+        val rotateIcon = setupStickerIcon(
+            R.drawable.icon_rotate_circle,
+            BitmapStickerIcon.RIGHT_BOTTOM,
+            ZoomIconEvent())
 
-        val rotateLeftIcon = BitmapStickerIcon(
-            ContextCompat.getDrawable(
-                this,
-                R.drawable.icon_rotate_left_2
-            ),
-            BitmapStickerIcon.LEFT_BOTTOM
-        )
-        rotateLeftIcon.iconEvent = RotateLeftEvent()
+        val rotateLeftIcon = setupStickerIcon(
+            R.drawable.icon_rotate_left_2,
+            BitmapStickerIcon.LEFT_BOTTOM,
+            RotateLeftEvent())
 
-        val rotateRightIcon = BitmapStickerIcon(
-            ContextCompat.getDrawable(
-                this,
-                R.drawable.icon_rotate_right
-            ),
-            BitmapStickerIcon.RIGHT_TOP
-        )
-        rotateRightIcon.iconEvent = RotateRightEvent()
+        val rotateRightIcon = setupStickerIcon(
+            R.drawable.icon_rotate_right,
+            BitmapStickerIcon.RIGHT_TOP,
+            RotateRightEvent())
 
         stickerViewModel.rotateIcons.value = arrayListOf(
             deleteIcon,
@@ -236,6 +199,71 @@ class MainActivity : AppCompatActivity() {
             rotateLeftIcon,
             rotateRightIcon
         )
+    }
+
+    private fun setupCropStickerIcons() {
+        val cropDiagonalLeftTopIcon = setupStickerIcon(
+            com.xiaopo.flying.sticker.R.drawable.scale_1,
+            BitmapStickerIcon.LEFT_TOP,
+            CropIconEvent(BitmapStickerIcon.LEFT_TOP))
+
+        val cropDiagonalRightTopIcon = setupStickerIcon(
+            com.xiaopo.flying.sticker.R.drawable.scale_2,
+            BitmapStickerIcon.RIGHT_TOP,
+            CropIconEvent(BitmapStickerIcon.RIGHT_TOP))
+
+        val cropDiagonalLeftBottomIcon = setupStickerIcon(
+            com.xiaopo.flying.sticker.R.drawable.scale_2,
+            BitmapStickerIcon.LEFT_BOTTOM,
+            CropIconEvent(BitmapStickerIcon.LEFT_BOTTOM))
+
+        val cropDiagonalRightBottomIcon = setupStickerIcon(
+            com.xiaopo.flying.sticker.R.drawable.scale_1,
+            BitmapStickerIcon.RIGHT_BOTTOM,
+            CropIconEvent(BitmapStickerIcon.RIGHT_BOTTOM))
+
+        val cropVerticalTopIcon = setupStickerIcon(
+            R.drawable.icon_crop_vertical,
+            BitmapStickerIcon.TOP_CENTER,
+            CropIconEvent(BitmapStickerIcon.TOP_CENTER))
+
+        val cropVerticalBottomIcon = setupStickerIcon(
+            R.drawable.icon_crop_vertical,
+            BitmapStickerIcon.BOTTOM_CENTER,
+            CropIconEvent(BitmapStickerIcon.BOTTOM_CENTER))
+
+        val cropHorizontalLeftIcon = setupStickerIcon(
+            R.drawable.icon_crop_horizontal,
+            BitmapStickerIcon.LEFT_CENTER,
+            CropIconEvent(BitmapStickerIcon.LEFT_CENTER))
+
+        val cropHorizontalRightIcon = setupStickerIcon(
+            R.drawable.icon_crop_horizontal,
+            BitmapStickerIcon.RIGHT_CENTER,
+            CropIconEvent(BitmapStickerIcon.RIGHT_CENTER))
+
+        stickerViewModel.cropIcons.value = arrayListOf(
+            cropDiagonalLeftTopIcon,
+            cropDiagonalRightTopIcon,
+            cropDiagonalLeftBottomIcon,
+            cropDiagonalRightBottomIcon,
+            cropVerticalTopIcon,
+            cropVerticalBottomIcon,
+            cropHorizontalLeftIcon,
+            cropHorizontalRightIcon
+        )
+    }
+
+    private fun setupStickerIcon(drawableID: Int, gravity: Int, event: StickerIconEvent): BitmapStickerIcon {
+        val stickerIcon = BitmapStickerIcon(
+            ContextCompat.getDrawable(
+                this,
+                drawableID
+            ),
+            gravity
+        )
+        stickerIcon.iconEvent = event
+        return stickerIcon
     }
 
     private fun setupTopButtons() {

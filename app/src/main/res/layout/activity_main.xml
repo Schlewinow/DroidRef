@@ -26,6 +26,7 @@
             app:constrained="@{viewModel.constrained}"
             app:currentIcon="@{viewModel.currentIcon}"
 
+            app:cropIcons="@{viewModel.cropIcons}"
             app:currentMode="@{viewModel.currentMode}"
             app:gestureDetector="@{viewModel.gestureListener}"
             app:handlingSticker="@{viewModel.handlingSticker}"

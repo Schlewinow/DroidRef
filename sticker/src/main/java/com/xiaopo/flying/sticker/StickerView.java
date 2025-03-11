@@ -50,8 +50,8 @@ public class StickerView extends FrameLayout {
 
     private List<Sticker> stickers = new ArrayList<>();
     private final List<BitmapStickerIcon> icons = new ArrayList<>(4);
-    private final List<BitmapStickerIcon> cropIcons = new ArrayList<>(4);
     private final List<BitmapStickerIcon> rotateIcons = new ArrayList<>(2);
+    private final List<BitmapStickerIcon> cropIcons = new ArrayList<>(4);
     private ObservableField<List<BitmapStickerIcon>> activeIcons = new ObservableField<>(new ArrayList<>(4));
 
     private final Paint borderPaint = new Paint();
@@ -505,6 +505,18 @@ public class StickerView extends FrameLayout {
     public void setRotateIcons(@NonNull List<BitmapStickerIcon> rotateIcons) {
         this.rotateIcons.clear();
         this.rotateIcons.addAll(rotateIcons);
+        updateIcons();
+        invalidate();
+    }
+
+    @NotNull
+    public List<BitmapStickerIcon> getCropIcons() {
+        return cropIcons;
+    }
+
+    public void setCropIcons(@NonNull List<BitmapStickerIcon> cropIcons) {
+        this.cropIcons.clear();
+        this.cropIcons.addAll(cropIcons);
         updateIcons();
         invalidate();
     }

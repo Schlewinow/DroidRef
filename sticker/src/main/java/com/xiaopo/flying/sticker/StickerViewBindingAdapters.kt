@@ -104,6 +104,12 @@ object StickerViewBindingAdapters {
     }
 
     @JvmStatic
+    @BindingAdapter("cropIcons")
+    fun setCropIcons(view: StickerView, value: List<BitmapStickerIcon>) {
+        view.cropIcons = value
+    }
+
+    @JvmStatic
     @BindingAdapter("handlingSticker")
     fun setHandlingSticker(view: StickerView, value: Sticker?) {
         view.handlingSticker = value
