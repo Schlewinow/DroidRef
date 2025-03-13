@@ -9,7 +9,6 @@ import android.content.pm.PackageManager
 import android.database.Cursor
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.Matrix
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.os.AsyncTask
@@ -44,6 +43,7 @@ import java.io.File
 import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.math.sqrt
 
 
 class MainActivity : AppCompatActivity() {
@@ -578,29 +578,47 @@ class MainActivity : AppCompatActivity() {
     private fun doAddSticker(bitmap: Bitmap?) {
         if (bitmap == null) {
             Toast.makeText(this, "Could not decode image", Toast.LENGTH_SHORT).show()
-        } else {
-            // Resize absurdly large images
-            val totalSize = bitmap.width * bitmap.height
-            val newBitmap = if (totalSize > MAX_SIZE_PIXELS) {
-                val scaleFactor: Float = MAX_SIZE_PIXELS.toFloat() / totalSize.toFloat()
-                val scaled = Bitmap.createScaledBitmap(
-                    bitmap,
-                    (bitmap.width * scaleFactor).toInt(),
-                    (bitmap.height * scaleFactor).toInt(),
-                    false
-                )
-                Timber.w(
-                    "Scaled huge bitmap, memory savings: %dMB",
-                    (bitmap.allocationByteCount - scaled.allocationByteCount) / (1024 * 1024)
-                )
-                scaled
-            } else {
-                bitmap
+        }
+        else {
+            var newBitmap: Bitmap = bitmap
+            // Resize images above resolution threshold.
+            val bitmapResolution = bitmap.width * bitmap.height
+            if (bitmapResolution > MAX_RESOLUTION) {
+                val shrinkFactor = sqrt(MAX_RESOLUTION.toDouble() / bitmapResolution.toDouble()).toFloat()
+                newBitmap = createScaledBitmap(bitmap, shrinkFactor, 0.6f)
             }
 
             val drawable = BitmapDrawable(resources, newBitmap)
             stickerViewModel.addSticker(DrawableSticker(drawable))
         }
+    }
+
+    private fun createScaledBitmap(sourceBitmap: Bitmap, scaleFactor: Float, maxScalePerStep: Float) : Bitmap {
+        var scaledBitmap = sourceBitmap
+        var remainingScaleFactor = scaleFactor
+        var continueScale = true
+
+        // Scaling PNGs (and maybe other formats, too) down will create jagged lines if the scaling is too drastic.
+        // To avoid these artifacts, scale the image in multiple steps, with each step having a scale factor above 0,5.
+        // This increases the image loading time, but improves the resulting image quality significantly.
+        while(continueScale) {
+            var currentScaleFactor = remainingScaleFactor
+            if (remainingScaleFactor < maxScalePerStep) {
+                remainingScaleFactor *= 1f / maxScalePerStep
+                currentScaleFactor = maxScalePerStep
+            }
+            else {
+                continueScale = false
+            }
+
+            val oldScaledBitmap = scaledBitmap
+            val targetWidth = (oldScaledBitmap.width.toFloat() * currentScaleFactor).toInt()
+            val targetHeight = (oldScaledBitmap.height.toFloat() * currentScaleFactor).toInt()
+            scaledBitmap = Bitmap.createScaledBitmap(oldScaledBitmap, targetWidth, targetHeight, true)
+            oldScaledBitmap.recycle()
+        }
+
+        return scaledBitmap
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -755,6 +773,6 @@ class MainActivity : AppCompatActivity() {
         const val INTENT_PICK_IMAGE = 1
         const val INTENT_PICK_SAVED_FILE = 2
 
-        const val MAX_SIZE_PIXELS = 2000 * 2000
+        const val MAX_RESOLUTION = 2048 * 2048
     }
 }
