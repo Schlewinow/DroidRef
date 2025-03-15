@@ -63,6 +63,8 @@ class MainActivity : AppCompatActivity() {
         binding.executePendingBindings()
         binding.lifecycleOwner = this
 
+        SettingsStorage.restoreSettings(this)
+
         setupScaleStickerIcons()
         setupRotateStickerIcons()
         setupCropStickerIcons()
@@ -107,13 +109,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleSendImage(intent: Intent) {
-        (intent.getParcelableExtra<Parcelable>(Intent.EXTRA_STREAM) as? Uri)?.let(this@MainActivity::doAddSticker)
+        (intent.getParcelableExtra<Parcelable>(Intent.EXTRA_STREAM) as? Uri)?.let(this@MainActivity::addSticker)
     }
 
     private fun handleSendMultipleImages(intent: Intent) {
         intent.getParcelableArrayListExtra<Parcelable>(Intent.EXTRA_STREAM)?.let { images ->
             images.forEach {
-                (it as? Uri)?.let(this@MainActivity::doAddSticker)
+                (it as? Uri)?.let(this@MainActivity::addSticker)
             }
         }
     }
@@ -306,11 +308,16 @@ class MainActivity : AppCompatActivity() {
         binding.buttonHideShowUI.setOnCheckedChangeListener { _, isToggled ->
             setUIVisibility(isToggled)
         }
+
+        binding.buttonSettings.setOnClickListener {
+            val openSettingsIntent = Intent(this, SettingsActivity::class.java)
+            startActivity(openSettingsIntent)
+        }
     }
 
     private fun setupBottomButtons() {
         binding.buttonAdd.setOnClickListener {
-            addSticker()
+            addStickerFromFileChooser()
         }
 
         binding.buttonReset.setOnClickListener {
@@ -562,29 +569,31 @@ class MainActivity : AppCompatActivity() {
         Toast.makeText(this, "Cropped all images.", Toast.LENGTH_SHORT).show()
     }
 
-    private fun addSticker() {
+    private fun addStickerFromFileChooser() {
         val intent = Intent()
         intent.type = "image/*"
         intent.action = Intent.ACTION_GET_CONTENT
         startActivityForResult(Intent.createChooser(intent, "Select Image"), INTENT_PICK_IMAGE)
     }
 
-    private fun doAddSticker(file: Uri) {
+    private fun addSticker(file: Uri) {
         val imageStream = contentResolver.openInputStream(file)
         val bitmap = BitmapFactory.decodeStream(imageStream)
-        doAddSticker(bitmap)
+        addSticker(bitmap)
     }
 
-    private fun doAddSticker(bitmap: Bitmap?) {
+    private fun addSticker(bitmap: Bitmap?) {
         if (bitmap == null) {
             Toast.makeText(this, "Could not decode image", Toast.LENGTH_SHORT).show()
         }
         else {
             var newBitmap: Bitmap = bitmap
-            // Resize images above resolution threshold.
+
+            // Resize images above resolution threshold (if setting is activated).
             val bitmapResolution = bitmap.width * bitmap.height
-            if (bitmapResolution > MAX_RESOLUTION) {
-                val shrinkFactor = sqrt(MAX_RESOLUTION.toDouble() / bitmapResolution.toDouble()).toFloat()
+            if (SettingsStorage.getActivateDownscaleOnImport()
+                && bitmapResolution > SettingsStorage.getMaxResolutionOnImport()) {
+                val shrinkFactor = sqrt(SettingsStorage.getMaxResolutionOnImport().toDouble() / bitmapResolution.toDouble()).toFloat()
                 newBitmap = createScaledBitmap(bitmap, shrinkFactor, 0.6f)
             }
 
@@ -603,7 +612,9 @@ class MainActivity : AppCompatActivity() {
         // This increases the image loading time, but improves the resulting image quality significantly.
         while(continueScale) {
             var currentScaleFactor = remainingScaleFactor
-            if (remainingScaleFactor < maxScalePerStep) {
+
+            if (SettingsStorage.getActivateMultiStepScaleOnImport()
+                && remainingScaleFactor < maxScalePerStep) {
                 remainingScaleFactor *= 1f / maxScalePerStep
                 currentScaleFactor = maxScalePerStep
             }
@@ -626,7 +637,7 @@ class MainActivity : AppCompatActivity() {
             when (requestCode) {
                 INTENT_PICK_IMAGE -> {
                     val selectedImage = data!!.data!!
-                    doAddSticker(selectedImage)
+                    addSticker(selectedImage)
                 }
                 INTENT_PICK_SAVED_FILE -> {
                     val selectedFile = data!!.data!!
@@ -691,7 +702,7 @@ class MainActivity : AppCompatActivity() {
                             .response { _, _, body ->
                                 body.fold({
                                     val bitmap = BitmapFactory.decodeByteArray(it, 0, it.size)
-                                    context.doAddSticker(bitmap)
+                                    context.addSticker(bitmap)
                                     progressBarHolder.visibility =
                                         View.GONE
                                 }, {
@@ -772,7 +783,5 @@ class MainActivity : AppCompatActivity() {
 
         const val INTENT_PICK_IMAGE = 1
         const val INTENT_PICK_SAVED_FILE = 2
-
-        const val MAX_RESOLUTION = 2048 * 2048
     }
 }
