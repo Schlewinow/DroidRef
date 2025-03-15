@@ -135,6 +135,13 @@
                         android:layout_height="match_parent"
                         android:layout_weight="1"
                         app:srcCompat="@drawable/ic_baseline_photo_size_select_large_24" />
+
+                    <ImageButton
+                        android:id="@+id/buttonSettings"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        app:srcCompat="@drawable/icon_settings" />
                 </LinearLayout>
             </HorizontalScrollView>
 

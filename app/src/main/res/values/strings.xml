@@ -1,3 +1,9 @@
 <resources>
-  <string name="app_name">DroidRef</string>
+    <string name="app_name">DroidRef</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_activate_downscaling">Image downscaling on import</string>
+    <string name="settings_multi_step_downscaling">Multi-step downscaling\n(takes longer on import, but higher quality)</string>
+    <string name="settings_max_image_resolution">Max image resolution</string>
+    <string name="settings_resolution_info">Having too many or too large images on the board will lead to lag. Too avoid that, images can be automatically downscaled on import to fit the max resolution.
+\nPlease note that the max resolution is the total amount of pixels, not a single dimension of the image. Changing the import settings does NOT affect images already on the reference board.</string>
 </resources>
