@@ -28,6 +28,7 @@ open class StickerViewModel :
     var canvasMatrix: CustomMutableLiveData<ObservableMatrix> = CustomMutableLiveData(ObservableMatrix())
 
     var stickers: MutableLiveData<ArrayList<Sticker>> = MutableLiveData(ArrayList())
+    var systemStickers: MutableLiveData<ArrayList<Sticker>> = MutableLiveData(ArrayList())
     var icons: MutableLiveData<ArrayList<BitmapStickerIcon>> = MutableLiveData(ArrayList())
     var rotateIcons: MutableLiveData<ArrayList<BitmapStickerIcon>> = MutableLiveData(ArrayList())
     var cropIcons: MutableLiveData<ArrayList<BitmapStickerIcon>> = MutableLiveData(ArrayList())
@@ -109,14 +110,28 @@ open class StickerViewModel :
         stickerOperationListener.onStickerAdded(sticker, position)
     }
 
+    fun addSystemSticker(sticker: Sticker) {
+        addSystemSticker(sticker, Sticker.Position.CENTER)
+    }
+
+    fun addSystemSticker(sticker: Sticker, position: Int) {
+        sticker.setCanvasMatrix(canvasMatrix.value!!.getMatrix())
+        systemStickers.value!!.add(sticker)
+        stickerOperationListener.onStickerAdded(sticker, position)
+    }
+
     fun resetView() {
         canvasMatrix.value!!.setMatrix(Matrix())
         updateCanvasMatrix()
     }
 
     fun updateCanvasMatrix() {
-        for (i in stickers.value!!.indices) {
-            val sticker: Sticker = stickers.value!![i]
+        for (index in stickers.value!!.indices) {
+            val sticker: Sticker = stickers.value!![index]
+            sticker.setCanvasMatrix(canvasMatrix.value!!.getMatrix())
+        }
+        for (index in systemStickers.value!!.indices) {
+            val sticker: Sticker = systemStickers.value!![index]
             sticker.setCanvasMatrix(canvasMatrix.value!!.getMatrix())
         }
         stickerOperationListener.onInvalidateView()
@@ -616,7 +631,7 @@ open class StickerViewModel :
         stickers.value?.let {
             for (index in it.indices.reversed()) {
                 val sticker = it[index]
-                if (sticker.isEditable && isInStickerAreaCropped(sticker, downX, downY)) {
+                if (isInStickerAreaCropped(sticker, downX, downY)) {
                     return sticker
                 }
             }

@@ -1,27 +1,19 @@
 package xyz.ruin.droidref
 
-import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.database.Cursor
-import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.os.AsyncTask
 import android.os.Bundle
-import android.os.Environment
 import android.os.Parcelable
-import android.provider.OpenableColumns
 import android.text.InputType
 import android.util.Patterns
 import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
 import androidx.databinding.DataBindingUtil
@@ -29,7 +21,6 @@ import androidx.lifecycle.ViewModelProvider
 import com.github.kittinunf.fuel.core.FuelManager
 import com.github.kittinunf.fuel.core.Headers
 import com.xiaopo.flying.sticker.*
-import com.xiaopo.flying.sticker.StickerView.OnStickerOperationListener
 import com.xiaopo.flying.sticker.iconEvents.CropIconEvent
 import com.xiaopo.flying.sticker.iconEvents.DeleteIconEvent
 import com.xiaopo.flying.sticker.iconEvents.FlipHorizontallyEvent
@@ -39,11 +30,8 @@ import com.xiaopo.flying.sticker.iconEvents.RotateRightEvent
 import com.xiaopo.flying.sticker.iconEvents.ZoomIconEvent
 import timber.log.Timber
 import xyz.ruin.droidref.databinding.ActivityMainBinding
-import java.io.File
-import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlin.math.sqrt
 
 
 class MainActivity : AppCompatActivity() {
@@ -58,7 +46,7 @@ class MainActivity : AppCompatActivity() {
         binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
 
         stickerViewModel = ViewModelProvider(this).get(StickerViewModel::class.java)
-        stickerViewModel.stickerOperationListener = MyStickerOperationListener(binding)
+        stickerViewModel.stickerOperationListener = RefBoardStickerOperationListener(binding)
         binding.viewModel = stickerViewModel
         binding.executePendingBindings()
         binding.lifecycleOwner = this
@@ -71,20 +59,33 @@ class MainActivity : AppCompatActivity() {
         setupTopButtons()
         setupBottomButtons()
 
-        if (stickerViewModel.stickers.value!!.isEmpty()) {
-            // Marker at the center (0,0) of the coordinate system for better user navigation experience.
-            val centerMarkerSticker = DrawableSticker(
-                ResourcesCompat.getDrawable(resources, R.drawable.marker_center, null))
-            centerMarkerSticker.setAlpha(64)
-            centerMarkerSticker.isEditable = false
-            stickerViewModel.addSticker(centerMarkerSticker)
-        }
-
-        // When the app starts, set locked edit mode as default.
-        lockEditMode()
+        resetReferenceBoard()
+        addCenterMarker()
 
         handleIntent(intent)
         intent.type = null // Don't run again if rotated/etc.
+    }
+
+    /**
+     * Used whenever the reference board is cleared,
+     * e.g. at app start, starting a new board or before loading an existing board.
+     */
+    private fun resetReferenceBoard() {
+        stickerViewModel.removeAllStickers()
+        stickerViewModel.resetView()
+        stickerViewModel.currentFileName = null
+        // When the app starts, set locked edit mode as default.
+        lockEditMode()
+    }
+
+    /**
+     * Marker at the center (0,0) of the coordinate system for better user navigation experience.
+     */
+    fun addCenterMarker() {
+        val centerMarkerSticker = DrawableSticker(
+            ResourcesCompat.getDrawable(resources, R.drawable.marker_center, null))
+        centerMarkerSticker.setAlpha(64)
+        stickerViewModel.addSystemSticker(centerMarkerSticker)
     }
 
     override fun onNewIntent(intent: Intent?) {
@@ -97,7 +98,8 @@ class MainActivity : AppCompatActivity() {
             intent?.action == Intent.ACTION_SEND -> {
                 if (intent.type?.startsWith("image/") == true) {
                     handleSendImage(intent)
-                } else if (intent.type == "text/plain") {
+                }
+                else if (intent.type == "text/plain") {
                     handleSendLink(intent)
                 }
             }
@@ -109,34 +111,40 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleSendImage(intent: Intent) {
-        (intent.getParcelableExtra<Parcelable>(Intent.EXTRA_STREAM) as? Uri)?.let(this@MainActivity::addSticker)
+        try {
+            val imageUri: Uri = (intent.getParcelableExtra<Parcelable>(Intent.EXTRA_STREAM)) as Uri
+            RefBoardLoadSaveManager.addSticker(imageUri, stickerViewModel, this)
+        }
+        catch (ex: Exception) {
+            Toast.makeText(this, getText(R.string.error_load_image_general), Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun handleSendMultipleImages(intent: Intent) {
-        intent.getParcelableArrayListExtra<Parcelable>(Intent.EXTRA_STREAM)?.let { images ->
-            images.forEach {
-                (it as? Uri)?.let(this@MainActivity::addSticker)
+        try {
+            val imagesParc = intent.getParcelableArrayListExtra<Parcelable>(Intent.EXTRA_STREAM)
+            for (imageParc in imagesParc!!) {
+                val imageUri = imageParc as Uri
+                RefBoardLoadSaveManager.addSticker(imageUri, stickerViewModel, this)
             }
         }
+        catch (ex: Exception) {
+            Toast.makeText(this, getText(R.string.error_load_image_general), Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun handleSendLink(intent: Intent) {
+        // Technically, requires Manifest.permission.INTERNET as well as Manifest.permission.ACCESS_NETWORK_STATE.
+        // Both are "normal" permissions though, which means these only have to be mentioned in the manifest to work.
+        val text = intent.getStringExtra(Intent.EXTRA_TEXT)!!
+        if (!isValidUrl(text)) {
+            Toast.makeText(this, getText(R.string.error_load_image_link), Toast.LENGTH_LONG).show()
+        }
+
+        FetchImageFromLinkTask(text, this).execute()
     }
 
     private fun isValidUrl(text: String) = Patterns.WEB_URL.matcher(text).matches()
-
-    private fun handleSendLink(intent: Intent) {
-        requestPermission(Manifest.permission.INTERNET)
-        requestPermission(Manifest.permission.ACCESS_NETWORK_STATE)
-
-        if (hasPermission(Manifest.permission.INTERNET)
-            && hasPermission(Manifest.permission.ACCESS_NETWORK_STATE))
-         {
-            val text = intent.getStringExtra(Intent.EXTRA_TEXT)!!
-            if (!isValidUrl(text)) {
-                Toast.makeText(this, "Invalid link", Toast.LENGTH_LONG).show()
-            }
-
-            FetchImageFromLinkTask(text, this).execute()
-        }
-    }
 
     /**
      * It's possible to override the sticker action icons.
@@ -288,20 +296,20 @@ class MainActivity : AppCompatActivity() {
         binding.buttonNew.setOnClickListener {
             AlertDialog.Builder(this)
                 .setIcon(android.R.drawable.ic_dialog_alert)
-                .setTitle("Confirm")
-                .setMessage("Are you sure you want to create a new board?")
-                .setPositiveButton("Yes") { _, _ -> newBoard() }
-                .setNegativeButton("No", null)
+                .setTitle(getText(R.string.main_dialog_new_board_title))
+                .setMessage(getText(R.string.main_dialog_new_board_content))
+                .setPositiveButton(getText(R.string.main_dialog_accept)) { _, _ -> resetReferenceBoard() }
+                .setNegativeButton(getText(R.string.main_dialog_decline), null)
                 .show()
         }
 
         binding.buttonCropAll.setOnClickListener {
             AlertDialog.Builder(this)
                 .setIcon(android.R.drawable.ic_dialog_alert)
-                .setTitle("Confirm")
-                .setMessage("Are you sure you want to crop all images? This will permanently modify the images to match their cropped areas, but it can save  space and improve performance.")
-                .setPositiveButton("Yes") { _, _ -> cropAll() }
-                .setNegativeButton("No", null)
+                .setTitle(getText(R.string.main_dialog_apply_crop_all_title))
+                .setMessage(getText(R.string.main_dialog_apply_crop_all_content))
+                .setPositiveButton(getText(R.string.main_dialog_accept)) { _, _ -> cropAll() }
+                .setNegativeButton(getText(R.string.main_dialog_decline), null)
                 .show()
         }
 
@@ -432,133 +440,42 @@ class MainActivity : AppCompatActivity() {
 
     private fun save() {
         if (stickerViewModel.currentFileName != null) {
-            doSave(stickerViewModel.currentFileName!!)
-        } else {
+            RefBoardLoadSaveManager.saveRefBoard(stickerViewModel.currentFileName!!, stickerViewModel, this)
+        }
+        else {
             saveAs()
         }
     }
 
     private fun saveAs() {
         val builder = AlertDialog.Builder(this)
-        builder.setTitle("Choose File Name")
+        builder.setTitle(getString(R.string.main_dialog_save_ref_board))
 
         val formatter = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US)
         val defaultFileName: String =
-            formatter.format(Calendar.getInstance().time) + "." + SAVE_FILE_EXTENSION
+            formatter.format(Calendar.getInstance().time) + "." + RefBoardLoadSaveManager.SAVE_FILE_EXTENSION
 
         val input = EditText(this)
         input.inputType = InputType.TYPE_CLASS_TEXT
         input.setText(defaultFileName, TextView.BufferType.EDITABLE)
         builder.setView(input)
 
-        builder.setPositiveButton(
-            "OK"
-        ) { dialog, which -> doSave(input.text.toString()) }
-        builder.setNegativeButton(
-            "Cancel"
-        ) { dialog, which -> dialog.cancel() }
+        builder.setPositiveButton(getString(R.string.main_dialog_save_ref_board_accept))
+            { _, _ -> RefBoardLoadSaveManager.saveRefBoard(input.text.toString(), stickerViewModel, this) }
+        builder.setNegativeButton(getString(R.string.main_dialog_save_ref_board_decline))
+            { dialog, _ -> dialog.cancel() }
 
         builder.show()
     }
 
-    private fun getSaveDirectory() =
-        File(
-            listOf(
-                Environment.getExternalStorageDirectory().absolutePath,
-                Environment.DIRECTORY_PICTURES,
-                resources.getString(R.string.app_name)
-            ).joinToString(File.separator)
-        )
-
-    private fun doSave(fileName: String) {
-        requestPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-
-        if (hasPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
-            val saveDir = getSaveDirectory()
-            val file = File(saveDir, fileName)
-
-            try {
-                saveDir.mkdirs()
-                StickerViewSerializer().serialize(stickerViewModel, file)
-                stickerViewModel.currentFileName = fileName
-                Toast.makeText(this, "Saved to $file", Toast.LENGTH_SHORT).show()
-            } catch (e: IOException) {
-                Timber.e(e, "Error writing %s", file)
-                Toast.makeText(this, "Error writing $file", Toast.LENGTH_LONG).show()
-            }
-        }
-    }
-
     private fun load() {
-        requestPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
-
-        if (hasPermission(Manifest.permission.READ_EXTERNAL_STORAGE)) {
-            val intent = Intent()
-            intent.type = "*/*"
-            intent.action = Intent.ACTION_GET_CONTENT
-            startActivityForResult(
-                Intent.createChooser(intent, "Open Saved File"),
-                INTENT_PICK_SAVED_FILE
-            )
-        }
-    }
-
-    private fun getFileNameOfUri(uri: Uri): String {
-        var result: String? = null
-        if (uri.scheme.equals("content")) {
-            val cursor: Cursor? = contentResolver.query(uri, null, null, null, null)
-            try {
-                if (cursor != null && cursor.moveToFirst()) {
-                    var cursorColumnIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                    if (cursorColumnIndex < 0) {
-                        cursorColumnIndex = 0
-                    }
-                    result = cursor.getString(cursorColumnIndex)
-                }
-            } finally {
-                cursor?.close()
-            }
-        }
-        if (result == null) {
-            result = uri.path
-            val cut = result!!.lastIndexOf('/')
-            if (cut != -1) {
-                result = result.substring(cut + 1)
-            }
-        }
-        return result
-    }
-
-    private fun doLoad(file: Uri) {
-        val fileName = getFileNameOfUri(file)
-        val extension = File(fileName).extension
-        if (extension != SAVE_FILE_EXTENSION) {
-            Toast.makeText(
-                this,
-                "File does not have '.$SAVE_FILE_EXTENSION' extension",
-                Toast.LENGTH_LONG
-            ).show()
-            return
-        }
-
-        try {
-            val stream = contentResolver.openInputStream(file)!!
-            StickerViewSerializer().deserialize(stickerViewModel, stream, resources)
-            //Toast.makeText(this, "Loaded $fileName", Toast.LENGTH_SHORT).show()
-            stickerViewModel.currentFileName = fileName
-            stickerViewModel.isLocked.value = true
-        } catch (e: IOException) {
-            // Unable to create file, likely because external storage is
-            // not currently mounted.
-            Timber.e(e, "Error writing %s", file)
-            Toast.makeText(this, "Error reading $file", Toast.LENGTH_LONG).show()
-        }
-    }
-
-    private fun newBoard() {
-        stickerViewModel.removeAllStickers()
-        stickerViewModel.resetView()
-        stickerViewModel.currentFileName = null
+        val intent = Intent()
+        intent.type = "*/*"
+        intent.action = Intent.ACTION_GET_CONTENT
+        startActivityForResult(
+            Intent.createChooser(intent, getString(R.string.main_dialog_open_ref_board)),
+            INTENT_PICK_SAVED_FILE
+        )
     }
 
     private fun cropAll() {
@@ -576,72 +493,17 @@ class MainActivity : AppCompatActivity() {
         startActivityForResult(Intent.createChooser(intent, "Select Image"), INTENT_PICK_IMAGE)
     }
 
-    private fun addSticker(file: Uri) {
-        val imageStream = contentResolver.openInputStream(file)
-        val bitmap = BitmapFactory.decodeStream(imageStream)
-        addSticker(bitmap)
-    }
-
-    private fun addSticker(bitmap: Bitmap?) {
-        if (bitmap == null) {
-            Toast.makeText(this, "Could not decode image", Toast.LENGTH_SHORT).show()
-        }
-        else {
-            var newBitmap: Bitmap = bitmap
-
-            // Resize images above resolution threshold (if setting is activated).
-            val bitmapResolution = bitmap.width * bitmap.height
-            if (SettingsStorage.getActivateDownscaleOnImport()
-                && bitmapResolution > SettingsStorage.getMaxResolutionOnImport()) {
-                val shrinkFactor = sqrt(SettingsStorage.getMaxResolutionOnImport().toDouble() / bitmapResolution.toDouble()).toFloat()
-                newBitmap = createScaledBitmap(bitmap, shrinkFactor, 0.6f)
-            }
-
-            val drawable = BitmapDrawable(resources, newBitmap)
-            stickerViewModel.addSticker(DrawableSticker(drawable))
-        }
-    }
-
-    private fun createScaledBitmap(sourceBitmap: Bitmap, scaleFactor: Float, maxScalePerStep: Float) : Bitmap {
-        var scaledBitmap = sourceBitmap
-        var remainingScaleFactor = scaleFactor
-        var continueScale = true
-
-        // Scaling PNGs (and maybe other formats, too) down will create jagged lines if the scaling is too drastic.
-        // To avoid these artifacts, scale the image in multiple steps, with each step having a scale factor above 0,5.
-        // This increases the image loading time, but improves the resulting image quality significantly.
-        while(continueScale) {
-            var currentScaleFactor = remainingScaleFactor
-
-            if (SettingsStorage.getActivateMultiStepScaleOnImport()
-                && remainingScaleFactor < maxScalePerStep) {
-                remainingScaleFactor *= 1f / maxScalePerStep
-                currentScaleFactor = maxScalePerStep
-            }
-            else {
-                continueScale = false
-            }
-
-            val oldScaledBitmap = scaledBitmap
-            val targetWidth = (oldScaledBitmap.width.toFloat() * currentScaleFactor).toInt()
-            val targetHeight = (oldScaledBitmap.height.toFloat() * currentScaleFactor).toInt()
-            scaledBitmap = Bitmap.createScaledBitmap(oldScaledBitmap, targetWidth, targetHeight, true)
-            oldScaledBitmap.recycle()
-        }
-
-        return scaledBitmap
-    }
-
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (resultCode == Activity.RESULT_OK) {
             when (requestCode) {
                 INTENT_PICK_IMAGE -> {
                     val selectedImage = data!!.data!!
-                    addSticker(selectedImage)
+                    RefBoardLoadSaveManager.addSticker(selectedImage, stickerViewModel, this)
                 }
                 INTENT_PICK_SAVED_FILE -> {
                     val selectedFile = data!!.data!!
-                    doLoad(selectedFile)
+                    resetReferenceBoard()
+                    RefBoardLoadSaveManager.loadRefBoard(selectedFile, stickerViewModel, this)
                 }
             }
         }
@@ -658,25 +520,9 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun hasPermission(permission: String) =
-        ActivityCompat.checkSelfPermission(
-            this,
-            permission
-        ) == PackageManager.PERMISSION_GRANTED
-
-    private fun requestPermission(permission: String) {
-        if (!hasPermission(permission)) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(permission),
-                PERM_RQST_CODE
-            )
-        }
-    }
-
-    internal class FetchImageFromLinkTask(val text: String, val context: MainActivity) : AsyncTask<Void, Void, Void>() {
+    internal class FetchImageFromLinkTask(val text: String, val mainActivity: MainActivity) : AsyncTask<Void, Void, Void>() {
         @SuppressLint("StaticFieldLeak")
-        val progressBarHolder: View = context.findViewById(R.id.progressBarHolder)
+        val progressBarHolder: View = mainActivity.findViewById(R.id.progressBarHolder)
 
         override fun onPreExecute() {
             super.onPreExecute()
@@ -692,7 +538,7 @@ class MainActivity : AppCompatActivity() {
                     result.fold({
                         val contentType = head.headers[Headers.CONTENT_TYPE]
                         if (!contentType.any { it.startsWith("image/") }) {
-                            Toast.makeText(context, "Link is not an image", Toast.LENGTH_LONG)
+                            Toast.makeText(mainActivity, "Link is not an image", Toast.LENGTH_LONG)
                                 .show()
                             progressBarHolder.visibility = View.GONE
                             return@response
@@ -702,12 +548,12 @@ class MainActivity : AppCompatActivity() {
                             .response { _, _, body ->
                                 body.fold({
                                     val bitmap = BitmapFactory.decodeByteArray(it, 0, it.size)
-                                    context.addSticker(bitmap)
+                                    RefBoardLoadSaveManager.addSticker(bitmap, mainActivity.stickerViewModel, mainActivity)
                                     progressBarHolder.visibility =
                                         View.GONE
                                 }, {
                                     Toast.makeText(
-                                        context,
+                                        mainActivity,
                                         "Failed to download image: $it",
                                         Toast.LENGTH_LONG
                                     )
@@ -717,70 +563,25 @@ class MainActivity : AppCompatActivity() {
                                     Timber.e(it)
                                 })
                             }
-                    }, {
+                    },
+                    {
                         progressBarHolder.visibility = View.GONE
-                        Toast.makeText(context, "Failed to download image", Toast.LENGTH_LONG)
+                        Toast.makeText(mainActivity, mainActivity.getText(R.string.error_load_image_general), Toast.LENGTH_LONG)
                             .show()
                         Timber.e(it)
                     })
                 }
-            } catch (e: Exception) {
+            }
+            catch (e: Exception) {
                 Timber.e(e)
-                Toast.makeText(context, "Invalid link", Toast.LENGTH_LONG).show()
+                Toast.makeText(mainActivity, mainActivity.getText(R.string.error_load_image_link), Toast.LENGTH_LONG).show()
                 progressBarHolder.visibility = View.GONE
             }
             return null
         }
     }
 
-    internal class MyStickerOperationListener(private val binding: ActivityMainBinding) :
-        OnStickerOperationListener {
-        override fun onStickerAdded(sticker: Sticker, direction: Int) {
-            binding.stickerView.layoutSticker(sticker, direction)
-            binding.stickerView.invalidate()
-        }
-
-        override fun onStickerClicked(sticker: Sticker) {
-            binding.stickerView.invalidate()
-        }
-
-        override fun onStickerDeleted(sticker: Sticker) {
-            binding.stickerView.invalidate()
-        }
-
-        override fun onStickerDragFinished(sticker: Sticker) {
-            binding.stickerView.invalidate()
-        }
-
-        override fun onStickerTouchedDown(sticker: Sticker) {
-            binding.stickerView.invalidate()
-        }
-
-        override fun onStickerZoomFinished(sticker: Sticker) {
-            binding.stickerView.invalidate()
-        }
-
-        override fun onStickerFlipped(sticker: Sticker) {
-            binding.stickerView.invalidate()
-        }
-
-        override fun onStickerDoubleTapped(sticker: Sticker) {
-            binding.stickerView.invalidate()
-        }
-
-        override fun onStickerMoved(sticker: Sticker) {
-            binding.stickerView.invalidate()
-        }
-
-        override fun onInvalidateView() {
-            binding.stickerView.invalidate()
-        }
-    }
-
     companion object {
-        const val PERM_RQST_CODE = 110
-        const val SAVE_FILE_EXTENSION: String = "ref"
-
         const val INTENT_PICK_IMAGE = 1
         const val INTENT_PICK_SAVED_FILE = 2
     }

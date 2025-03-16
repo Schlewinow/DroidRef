@@ -61,6 +61,12 @@ object StickerViewBindingAdapters {
     }
 
     @JvmStatic
+    @BindingAdapter("systemStickers")
+    fun setSystemStickers(view: StickerView, value: List<Sticker>) {
+        view.systemStickers = value
+    }
+
+    @JvmStatic
     @BindingAdapter("activeIcons")
     fun setActiveIcons(view: StickerView, value: List<BitmapStickerIcon>) {
         view.setActiveIcons(value)

@@ -72,10 +72,6 @@ class StickerViewSerializer {
         val dedup: MutableMap<String, StickerMetadata> = mutableMapOf()
 
         viewModel.stickers.value!!.forEach {
-            if (!it.isEditable) {
-                return@forEach
-            }
-
             val drawableSticker = it as DrawableSticker
             val entry = Entry(
                 drawableSticker.getRealBounds(),
