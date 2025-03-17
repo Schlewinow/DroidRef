@@ -2,26 +2,29 @@ package xyz.ruin.droidref
 
 import android.Manifest
 import android.content.ContentResolver
+import android.content.ContentValues
 import android.content.Context
 import android.database.Cursor
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
+import android.os.Build
 import android.os.Environment
+import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
-import com.fondesa.kpermissions.PermissionStatus
 import com.fondesa.kpermissions.extension.permissionsBuilder
 import com.fondesa.kpermissions.isDenied
 import com.fondesa.kpermissions.isGranted
 import com.fondesa.kpermissions.isPermanentlyDenied
-import com.fondesa.kpermissions.request.PermissionRequest
 import com.xiaopo.flying.sticker.DrawableSticker
 import com.xiaopo.flying.sticker.StickerViewModel
 import com.xiaopo.flying.sticker.StickerViewSerializer
 import timber.log.Timber
+import java.io.BufferedOutputStream
 import java.io.File
 import java.io.IOException
 import kotlin.math.sqrt
@@ -116,12 +119,12 @@ object RefBoardLoadSaveManager {
      * @param activity Current activity.
      */
     fun saveRefBoard(fileName: String, stickerViewModel: StickerViewModel, activity: AppCompatActivity) {
-        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.R) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
             val permissionRequest = activity.permissionsBuilder(Manifest.permission.WRITE_EXTERNAL_STORAGE).build()
             permissionRequest.addListener { results ->
                 val result = results[0]
                 if (result.isGranted()) {
-                    saveRefBoardLegacy(fileName, getGlobalPictureDirectory(activity), stickerViewModel, activity)
+                    saveRefBoardLegacy(fileName, getGlobalDocumentsDirectory(activity), stickerViewModel, activity)
                 }
                 else if (result.isPermanentlyDenied()) {
                     Toast.makeText(activity, R.string.main_info_ref_board_save_permission_denied_permanently, Toast.LENGTH_LONG).show()
@@ -133,8 +136,43 @@ object RefBoardLoadSaveManager {
             permissionRequest.send()
         }
         else {
-            // ToDo: new approach required
-            saveRefBoardLegacy(fileName, getAppStorageDirectory(activity),  stickerViewModel, activity)
+            saveRefBoardMediaStore(fileName, stickerViewModel, activity)
+        }
+    }
+
+    /**
+     * Save reference board using media storage API.
+     * @param fileName Name of the file to store (without path, yet including extension).
+     * @param stickerViewModel The reference board view model to be serialized.
+     * @param context Local app context, usually current activity.
+     */
+    @RequiresApi(Build.VERSION_CODES.Q)
+    private fun saveRefBoardMediaStore(fileName: String, stickerViewModel: StickerViewModel, context: Context) {
+        val contentResolver = context.contentResolver
+        val contentValues = ContentValues()
+
+        // Only files with MIME-type images/* are allowed to be stored in images folder.
+        // So use "Documents" (or potentially "Downloads") as base directory instead.
+        contentValues.put(MediaStore.Files.FileColumns.DISPLAY_NAME, fileName)
+        contentValues.put(MediaStore.Files.FileColumns.MIME_TYPE, "application/octet-stream")
+        val relativePath = Environment.DIRECTORY_DOCUMENTS + File.separator + context.resources.getString(R.string.app_name)
+        contentValues.put(MediaStore.Files.FileColumns.RELATIVE_PATH, relativePath)
+
+        try {
+            val uri = contentResolver.insert(MediaStore.Files.getContentUri("external"), contentValues)
+            if (uri != null) {
+                contentResolver.openOutputStream(uri)?.use {
+                        outputStream -> StickerViewSerializer().serialize(stickerViewModel, BufferedOutputStream(outputStream))
+                }
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.main_info_ref_board_saved, relativePath + File.separator + fileName),
+                    Toast.LENGTH_SHORT).show()
+            }
+        }
+        catch (ex: Exception) {
+            Timber.e(ex, "Error writing %s", fileName)
+            Toast.makeText(context, context.getString(R.string.main_info_ref_board_save_error, fileName), Toast.LENGTH_LONG).show()
         }
     }
 
@@ -161,30 +199,17 @@ object RefBoardLoadSaveManager {
     }
 
     /**
-     * Getter internal storage directory.
-     * Not generally accessible, but requires no permissions when reading or writing.
-     * @param context Local app context, usually current activity.
-     */
-    private fun getAppStorageDirectory(context: Context): File {
-        return File(
-            listOf(
-                // ToDo: certainly not the prettiest solution, but works on both older and newer systems for now. Should be updated for long term compatibility.
-                context.externalMediaDirs[0].absolutePath,
-                "SavedBoards"
-            ).joinToString(File.separator)
-        )
-    }
-
-    /**
-     * Getter device image storage directory.
+     * Getter device documents storage directory.
      * Requires permissions and/or special access.
      * @param context Local app context, usually current activity.
      */
-    private fun getGlobalPictureDirectory(context: Context): File {
+    private fun getGlobalDocumentsDirectory(context: Context): File {
+        // Older DroidRef versions used the "Pictures" directory, but that is not possible in the new API.
+        // To keep file access consistent, reference boards are now stored in "Documents".
         return File(
             listOf(
                 Environment.getExternalStorageDirectory().absolutePath,
-                Environment.DIRECTORY_PICTURES,
+                Environment.DIRECTORY_DOCUMENTS,
                 context.resources.getString(R.string.app_name)
             ).joinToString(File.separator)
         )
