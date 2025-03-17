@@ -170,6 +170,11 @@ open class StickerViewModel :
         stickerOperationListener.onInvalidateView()
     }
 
+    fun removeAllSystemStickers() {
+        systemStickers.value?.clear()
+        stickerOperationListener.onInvalidateView()
+    }
+
     fun resetCurrentStickerCropping() {
         handlingSticker.value?.let(this::resetStickerCropping)
     }

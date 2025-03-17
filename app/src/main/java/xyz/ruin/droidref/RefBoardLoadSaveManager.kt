@@ -1,5 +1,6 @@
 package xyz.ruin.droidref
 
+import android.Manifest
 import android.content.ContentResolver
 import android.content.Context
 import android.database.Cursor
@@ -10,6 +11,13 @@ import android.net.Uri
 import android.os.Environment
 import android.provider.OpenableColumns
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import com.fondesa.kpermissions.PermissionStatus
+import com.fondesa.kpermissions.extension.permissionsBuilder
+import com.fondesa.kpermissions.isDenied
+import com.fondesa.kpermissions.isGranted
+import com.fondesa.kpermissions.isPermanentlyDenied
+import com.fondesa.kpermissions.request.PermissionRequest
 import com.xiaopo.flying.sticker.DrawableSticker
 import com.xiaopo.flying.sticker.StickerViewModel
 import com.xiaopo.flying.sticker.StickerViewSerializer
@@ -105,21 +113,50 @@ object RefBoardLoadSaveManager {
      * Write the reference board data to a file on the device's storage.
      * @param fileName Name of the file to store (without path, yet including extension).
      * @param stickerViewModel The reference board view model to be serialized.
+     * @param activity Current activity.
+     */
+    fun saveRefBoard(fileName: String, stickerViewModel: StickerViewModel, activity: AppCompatActivity) {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.R) {
+            val permissionRequest = activity.permissionsBuilder(Manifest.permission.WRITE_EXTERNAL_STORAGE).build()
+            permissionRequest.addListener { results ->
+                val result = results[0]
+                if (result.isGranted()) {
+                    saveRefBoardLegacy(fileName, getGlobalPictureDirectory(activity), stickerViewModel, activity)
+                }
+                else if (result.isPermanentlyDenied()) {
+                    Toast.makeText(activity, R.string.main_info_ref_board_save_permission_denied_permanently, Toast.LENGTH_LONG).show()
+                }
+                else if (result.isDenied()) {
+                    Toast.makeText(activity, R.string.main_info_ref_board_save_permission_denied, Toast.LENGTH_LONG).show()
+                }
+            }
+            permissionRequest.send()
+        }
+        else {
+            // ToDo: new approach required
+            saveRefBoardLegacy(fileName, getAppStorageDirectory(activity),  stickerViewModel, activity)
+        }
+    }
+
+    /**
+     * Save reference board using the legacy approach.
+     * @param fileName Name of the file to store (without path, yet including extension).
+     * @param saveDir Directory at which so store the file. Depending on the directory, permissions may be required.
+     * @param stickerViewModel The reference board view model to be serialized.
      * @param context Local app context, usually current activity.
      */
-    fun saveRefBoard(fileName: String, stickerViewModel: StickerViewModel, context: Context) {
-        val saveDir = getAppStorageDirectory(context)
+    private fun saveRefBoardLegacy(fileName: String, saveDir: File, stickerViewModel: StickerViewModel, context: Context) {
         val file = File(saveDir, fileName)
 
         try {
             saveDir.mkdirs()
             StickerViewSerializer().serialize(stickerViewModel, file)
             stickerViewModel.currentFileName = fileName
-            Toast.makeText(context, "Saved to $file", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.main_info_ref_board_saved, file.toString()), Toast.LENGTH_SHORT).show()
         }
         catch (e: IOException) {
             Timber.e(e, "Error writing %s", file)
-            Toast.makeText(context, "Error writing $file", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, context.getString(R.string.main_info_ref_board_save_error, file.toString()), Toast.LENGTH_LONG).show()
         }
     }
 

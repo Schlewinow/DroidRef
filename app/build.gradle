@@ -48,6 +48,8 @@ dependencies {
     implementation 'com.github.kittinunf.fuel:fuel-android:2.3.1'
     implementation 'com.google.android.material:material:1.12.0'
 
+    implementation 'com.github.fondesa:kpermissions:3.5.0'
+
     def lifecycle_version = "2.2.0"
     implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:$lifecycle_version"
     implementation "androidx.lifecycle:lifecycle-livedata-ktx:$lifecycle_version"

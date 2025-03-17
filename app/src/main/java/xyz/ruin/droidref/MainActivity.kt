@@ -81,7 +81,10 @@ class MainActivity : AppCompatActivity() {
     /**
      * Marker at the center (0,0) of the coordinate system for better user navigation experience.
      */
-    fun addCenterMarker() {
+    private fun addCenterMarker() {
+        // This prevents having multiple markers after the device changes orientation.
+        stickerViewModel.removeAllSystemStickers()
+
         val centerMarkerSticker = DrawableSticker(
             ResourcesCompat.getDrawable(resources, R.drawable.marker_center, null))
         centerMarkerSticker.setAlpha(64)
@@ -116,7 +119,7 @@ class MainActivity : AppCompatActivity() {
             RefBoardLoadSaveManager.addSticker(imageUri, stickerViewModel, this)
         }
         catch (ex: Exception) {
-            Toast.makeText(this, getText(R.string.error_load_image_general), Toast.LENGTH_LONG).show()
+            Toast.makeText(this, R.string.error_load_image_general, Toast.LENGTH_LONG).show()
         }
     }
 
@@ -129,7 +132,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
         catch (ex: Exception) {
-            Toast.makeText(this, getText(R.string.error_load_image_general), Toast.LENGTH_LONG).show()
+            Toast.makeText(this, R.string.error_load_image_general, Toast.LENGTH_LONG).show()
         }
     }
 
@@ -138,7 +141,7 @@ class MainActivity : AppCompatActivity() {
         // Both are "normal" permissions though, which means these only have to be mentioned in the manifest to work.
         val text = intent.getStringExtra(Intent.EXTRA_TEXT)!!
         if (!isValidUrl(text)) {
-            Toast.makeText(this, getText(R.string.error_load_image_link), Toast.LENGTH_LONG).show()
+            Toast.makeText(this, R.string.error_load_image_link, Toast.LENGTH_LONG).show()
         }
 
         FetchImageFromLinkTask(text, this).execute()
@@ -566,7 +569,7 @@ class MainActivity : AppCompatActivity() {
                     },
                     {
                         progressBarHolder.visibility = View.GONE
-                        Toast.makeText(mainActivity, mainActivity.getText(R.string.error_load_image_general), Toast.LENGTH_LONG)
+                        Toast.makeText(mainActivity, R.string.error_load_image_general, Toast.LENGTH_LONG)
                             .show()
                         Timber.e(it)
                     })
@@ -574,7 +577,7 @@ class MainActivity : AppCompatActivity() {
             }
             catch (e: Exception) {
                 Timber.e(e)
-                Toast.makeText(mainActivity, mainActivity.getText(R.string.error_load_image_link), Toast.LENGTH_LONG).show()
+                Toast.makeText(mainActivity, R.string.error_load_image_link, Toast.LENGTH_LONG).show()
                 progressBarHolder.visibility = View.GONE
             }
             return null

@@ -14,6 +14,10 @@
     <string name="main_dialog_save_ref_board_accept">OK</string>
     <string name="main_dialog_save_ref_board_decline">Cancel</string>
     <string name="main_dialog_open_ref_board">Open Reference Board File</string>
+    <string name="main_info_ref_board_saved">"Saved to %s"</string>
+    <string name="main_info_ref_board_save_permission_denied">"Not able to save file without permission."</string>
+    <string name="main_info_ref_board_save_permission_denied_permanently">"Not able to save file without permission. Please set permissions in the app's system settings."</string>
+    <string name="main_info_ref_board_save_error">"Error writing %s"</string>
 
     <string name="settings_title">Settings</string>
     <string name="settings_activate_downscaling">Image downscaling on import</string>
