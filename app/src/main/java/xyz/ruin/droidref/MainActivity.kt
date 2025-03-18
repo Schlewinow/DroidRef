@@ -59,7 +59,8 @@ class MainActivity : AppCompatActivity() {
         setupTopButtons()
         setupBottomButtons()
 
-        resetReferenceBoard()
+        // When the app starts, set locked edit mode as default.
+        lockEditMode()
         addCenterMarker()
 
         handleIntent(intent)
@@ -74,7 +75,6 @@ class MainActivity : AppCompatActivity() {
         stickerViewModel.removeAllStickers()
         stickerViewModel.resetView()
         stickerViewModel.currentFileName = null
-        // When the app starts, set locked edit mode as default.
         lockEditMode()
     }
 
@@ -192,7 +192,6 @@ class MainActivity : AppCompatActivity() {
             scaleVerticalIcon,
             scaleHorizontalIcon
         )
-        stickerViewModel.activeIcons.value = stickerViewModel.icons.value
     }
 
     private fun setupRotateStickerIcons() {

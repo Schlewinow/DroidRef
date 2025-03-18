@@ -375,14 +375,6 @@ public abstract class Sticker {
     public void release() {
     }
 
-    public boolean isVisible() {
-        return visible;
-    }
-
-    public void setVisible(boolean visible) {
-        this.visible = visible;
-    }
-
     public Rect getRealBounds() {
         return realBounds;
     }

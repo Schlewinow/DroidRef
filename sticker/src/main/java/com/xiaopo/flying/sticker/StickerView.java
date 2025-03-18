@@ -218,28 +218,24 @@ public class StickerView extends FrameLayout {
         for (int index = 0; index < systemStickers.size(); index++) {
             Sticker sticker = systemStickers.get(index);
             if (sticker != null) {
-                if (sticker.isVisible()) {
-                    sticker.draw(canvas);
-                }
+                sticker.draw(canvas);
             }
         }
 
         for (int index = 0; index < stickers.size(); index++) {
             Sticker sticker = stickers.get(index);
             if (sticker != null) {
-                if (sticker.isVisible()) {
-                    sticker.draw(canvas);
-//                    if (isCropActive && handlingSticker != sticker) {
-//                        getStickerPoints(sticker, bitmapPoints);
-//                        drawBorder(canvas, bitmapPoints, R.color.enabled, 4);
-//                    }
-                }
+                sticker.draw(canvas);
+//                if (isCropActive && handlingSticker != sticker) {
+//                    getStickerPoints(sticker, bitmapPoints);
+//                    drawBorder(canvas, bitmapPoints, R.color.enabled, 4);
+//                }
             }
         }
 
         if (handlingSticker != null && !isLocked && (showBorder || showIcons)) {
             getStickerPoints(handlingSticker, bitmapPoints);
-            if (handlingSticker != null && handlingSticker.isVisible()) {
+            if (handlingSticker != null) {
                 drawBorder(canvas, bitmapPoints, dashColor, 1);
             }
 
@@ -317,14 +313,6 @@ public class StickerView extends FrameLayout {
         gestureDetector.onTouchEvent(event);
     }
 
-    public void showCurrentSticker() {
-        handlingSticker.setVisible(true);
-    }
-
-    public void hideCurrentSticker() {
-        handlingSticker.setVisible(false);
-    }
-
     @NonNull
     public StickerView layoutSticker(@NonNull Sticker sticker) {
         return layoutSticker(sticker, Sticker.Position.CENTER);
@@ -391,7 +379,11 @@ public class StickerView extends FrameLayout {
     }
 
     public void setHandlingSticker(Sticker sticker) {
-        handlingSticker = sticker;
+        // Avoid system stickers to be set as active stickers.
+        if (stickers.contains(sticker)) {
+            handlingSticker = sticker;
+        }
+        invalidate();
         invalidate();
     }
 

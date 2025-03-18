@@ -27,12 +27,40 @@ open class StickerViewModel :
 
     var canvasMatrix: CustomMutableLiveData<ObservableMatrix> = CustomMutableLiveData(ObservableMatrix())
 
+    /**
+     * The reference images added to the board by the user.
+     */
     var stickers: MutableLiveData<ArrayList<Sticker>> = MutableLiveData(ArrayList())
+
+    /**
+     * Special icons on the board managed by the app.
+     */
     var systemStickers: MutableLiveData<ArrayList<Sticker>> = MutableLiveData(ArrayList())
+
+    /**
+     * Image manipulation icons during scale mode.
+     */
     var icons: MutableLiveData<ArrayList<BitmapStickerIcon>> = MutableLiveData(ArrayList())
+
+    /**
+     * Image manipulation icons during rotate mode.
+     */
     var rotateIcons: MutableLiveData<ArrayList<BitmapStickerIcon>> = MutableLiveData(ArrayList())
+
+    /**
+     * Image manipulation icons during crop mode.
+     */
     var cropIcons: MutableLiveData<ArrayList<BitmapStickerIcon>> = MutableLiveData(ArrayList())
+
+    /**
+     * Image manipulation icons currently shown to the user.
+     * Will be one of the three edit modes (scale, rotate, crop).
+     */
     var activeIcons: MutableLiveData<List<BitmapStickerIcon>> = MutableLiveData(ArrayList(4))
+
+    /**
+     * The image currently selected by the user, which may be edited if one of the edit modes is currently active.
+     */
     var handlingSticker: MutableLiveData<Sticker?> = MutableLiveData(null)
 
     var gestureListener: MutableLiveData<GestureListener> = MutableLiveData()
@@ -110,14 +138,14 @@ open class StickerViewModel :
         stickerOperationListener.onStickerAdded(sticker, position)
     }
 
-    fun addSystemSticker(sticker: Sticker) {
-        addSystemSticker(sticker, Sticker.Position.CENTER)
+    fun addSystemSticker(newSystemSticker: Sticker) {
+        addSystemSticker(newSystemSticker, Sticker.Position.CENTER)
     }
 
-    fun addSystemSticker(sticker: Sticker, position: Int) {
-        sticker.setCanvasMatrix(canvasMatrix.value!!.getMatrix())
-        systemStickers.value!!.add(sticker)
-        stickerOperationListener.onStickerAdded(sticker, position)
+    fun addSystemSticker(newSystemSticker: Sticker, position: Int) {
+        newSystemSticker.setCanvasMatrix(canvasMatrix.value!!.getMatrix())
+        systemStickers.value!!.add(newSystemSticker)
+        stickerOperationListener.onStickerAdded(newSystemSticker, position)
     }
 
     fun resetView() {
