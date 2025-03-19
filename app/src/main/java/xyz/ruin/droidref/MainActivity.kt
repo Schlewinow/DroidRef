@@ -8,6 +8,7 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.AsyncTask
 import android.os.Bundle
+import android.os.Handler
 import android.os.Parcelable
 import android.text.InputType
 import android.util.Patterns
@@ -63,13 +64,20 @@ class MainActivity : AppCompatActivity() {
         lockEditMode()
         addCenterMarker()
 
+        // Some data are overridden by the view model, though with a seemingly async timing.
+        // This code is executed after the view model has updated the UI.
+        Handler(mainLooper).post {
+            // Might have been in hidden UI mode before changing device orientation.
+            setUIVisibility(binding.buttonHideShowUI.isChecked)
+        }
+
         handleIntent(intent)
         intent.type = null // Don't run again if rotated/etc.
     }
 
     /**
      * Used whenever the reference board is cleared,
-     * e.g. at app start, starting a new board or before loading an existing board.
+     * e.g. when starting a new board or before loading an existing board.
      */
     private fun resetReferenceBoard() {
         stickerViewModel.removeAllStickers()
@@ -315,8 +323,8 @@ class MainActivity : AppCompatActivity() {
                 .show()
         }
 
-        binding.buttonHideShowUI.setOnCheckedChangeListener { _, isToggled ->
-            setUIVisibility(isToggled)
+        binding.buttonHideShowUI.setOnClickListener() {
+            setUIVisibility(binding.buttonHideShowUI.isChecked)
         }
 
         binding.buttonSettings.setOnClickListener {
@@ -338,26 +346,21 @@ class MainActivity : AppCompatActivity() {
             stickerViewModel.duplicateCurrentSticker()
         }
 
-        binding.buttonLock.setOnCheckedChangeListener { _, isToggled ->
-            if (isToggled) {
-                // The change listener is also called if another button is clicked.
-                // So activate this only if the button actually changed its toggle.
+        binding.buttonLock.setOnClickListener {
+            if (binding.buttonLock.isChecked) {
                 lockEditMode()
             }
             else {
                 // The lock button does not un-toggle itself, as it is the default mode.
                 // It is instead un-toggled once one of the edit modes is activated.
-                if (!binding.buttonScale.isChecked
-                    && !binding.buttonCrop.isChecked
-                    && !binding.buttonRotate.isChecked) {
-                    binding.buttonLock.isChecked = true
-                }
+                binding.buttonLock.isChecked = true
             }
         }
 
-        binding.buttonScale.setOnCheckedChangeListener { _, isToggled ->
+        binding.buttonScale.setOnClickListener {
+            val checked = binding.buttonScale.isChecked
             lockEditMode()
-            if (isToggled) {
+            if (checked) {
                 setScaleMode()
             }
         }
@@ -366,9 +369,10 @@ class MainActivity : AppCompatActivity() {
             stickerViewModel.resetCurrentStickerZoom()
         }
 
-        binding.buttonCrop.setOnCheckedChangeListener { _, isToggled ->
+        binding.buttonCrop.setOnClickListener {
+            val checked = binding.buttonCrop.isChecked
             lockEditMode()
-            if (isToggled) {
+            if (checked) {
                 setCropEditMode()
             }
         }
@@ -377,9 +381,10 @@ class MainActivity : AppCompatActivity() {
             stickerViewModel.resetCurrentStickerCropping()
         }
 
-        binding.buttonRotate.setOnCheckedChangeListener { _, isToggled ->
+        binding.buttonRotate.setOnClickListener {
+            val checked = binding.buttonRotate.isChecked
             lockEditMode()
-            if (isToggled) {
+            if (checked) {
                 setRotationEditMode()
             }
         }

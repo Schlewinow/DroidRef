@@ -227,7 +227,7 @@ object RefBoardLoadSaveManager {
         if (extension != SAVE_FILE_EXTENSION) {
             Toast.makeText(
                 context,
-                "File does not have '.$SAVE_FILE_EXTENSION' extension",
+                context.getString(R.string.main_info_ref_board_load_error_extension, SAVE_FILE_EXTENSION),
                 Toast.LENGTH_LONG
             ).show()
             return
@@ -239,9 +239,9 @@ object RefBoardLoadSaveManager {
             stickerViewModel.currentFileName = fileName
         }
         catch (e: IOException) {
-            // Unable to create file, likely because external storage is not currently mounted.
-            Timber.e(e, "Error writing %s", file)
-            Toast.makeText(context, "Error reading $file", Toast.LENGTH_LONG).show()
+            // Unable to read file, likely because external storage is not currently mounted.
+            Timber.e(e, "Error reading %s", file)
+            Toast.makeText(context, context.getString(R.string.main_info_ref_board_load_error, file.toString()), Toast.LENGTH_LONG).show()
         }
     }
 

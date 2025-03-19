@@ -18,6 +18,8 @@
     <string name="main_info_ref_board_save_permission_denied">"Not able to save file without permission."</string>
     <string name="main_info_ref_board_save_permission_denied_permanently">"Not able to save file without permission. Please set permissions in the app's system settings."</string>
     <string name="main_info_ref_board_save_error">"Error writing %s"</string>
+    <string name="main_info_ref_board_load_error_extension">File does not have \'%s\' extension</string>
+    <string name="main_info_ref_board_load_error">Error reading %s</string>
 
     <string name="settings_title">Settings</string>
     <string name="settings_activate_downscaling">Image downscaling on import</string>
