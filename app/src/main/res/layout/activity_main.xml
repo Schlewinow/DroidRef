@@ -45,7 +45,8 @@
             app:showAuxiliaryLines="false"
             app:showBorder="true"
             app:showIcons="true"
-            app:stickers="@{viewModel.stickers}">
+            app:stickers="@{viewModel.stickers}"
+            app:systemStickers="@{viewModel.systemStickers}">
 
             <View
                 android:id="@+id/view"

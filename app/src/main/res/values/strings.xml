@@ -1,5 +1,26 @@
 <resources>
     <string name="app_name">DroidRef</string>
+
+    <string name="error_load_image_general">Not able to open image.</string>
+    <string name="error_load_image_link">Invalid link.</string>
+
+    <string name="main_dialog_accept">Yes</string>
+    <string name="main_dialog_decline">No</string>
+    <string name="main_dialog_new_board_title">New reference board</string>
+    <string name="main_dialog_new_board_content">Are you sure you want to create a new board? Unsaved changes to the current board will be lost.</string>
+    <string name="main_dialog_apply_crop_all_title">Apply crop to images</string>
+    <string name="main_dialog_apply_crop_all_content">Are you sure you want to crop all images? This will permanently modify the images to match their cropped areas, but it can save  space and improve performance.</string>
+    <string name="main_dialog_save_ref_board">Choose File Name</string>
+    <string name="main_dialog_save_ref_board_accept">OK</string>
+    <string name="main_dialog_save_ref_board_decline">Cancel</string>
+    <string name="main_dialog_open_ref_board">Open Reference Board File</string>
+    <string name="main_info_ref_board_saved">"Saved to %s"</string>
+    <string name="main_info_ref_board_save_permission_denied">"Not able to save file without permission."</string>
+    <string name="main_info_ref_board_save_permission_denied_permanently">"Not able to save file without permission. Please set permissions in the app's system settings."</string>
+    <string name="main_info_ref_board_save_error">"Error writing %s"</string>
+    <string name="main_info_ref_board_load_error_extension">File does not have \'%s\' extension</string>
+    <string name="main_info_ref_board_load_error">Error reading %s</string>
+
     <string name="settings_title">Settings</string>
     <string name="settings_activate_downscaling">Image downscaling on import</string>
     <string name="settings_multi_step_downscaling">Multi-step downscaling\n(takes longer on import, but higher quality)</string>

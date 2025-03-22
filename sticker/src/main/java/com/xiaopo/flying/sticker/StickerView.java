@@ -49,6 +49,7 @@ public class StickerView extends FrameLayout {
     public static final int FLIP_VERTICALLY = 1 << 1;
 
     private List<Sticker> stickers = new ArrayList<>();
+    private List<Sticker> systemStickers = new ArrayList<>();
     private final List<BitmapStickerIcon> icons = new ArrayList<>(4);
     private final List<BitmapStickerIcon> rotateIcons = new ArrayList<>(2);
     private final List<BitmapStickerIcon> cropIcons = new ArrayList<>(4);
@@ -214,22 +215,27 @@ public class StickerView extends FrameLayout {
     }
 
     protected void drawStickers(Canvas canvas) {
-        for (int i = 0; i < stickers.size(); i++) {
-            Sticker sticker = stickers.get(i);
+        for (int index = 0; index < systemStickers.size(); index++) {
+            Sticker sticker = systemStickers.get(index);
             if (sticker != null) {
-                if (sticker.isVisible()) {
-                    sticker.draw(canvas);
-//                    if (isCropActive && handlingSticker != sticker) {
-//                        getStickerPoints(sticker, bitmapPoints);
-//                        drawBorder(canvas, bitmapPoints, R.color.enabled, 4);
-//                    }
-                }
+                sticker.draw(canvas);
+            }
+        }
+
+        for (int index = 0; index < stickers.size(); index++) {
+            Sticker sticker = stickers.get(index);
+            if (sticker != null) {
+                sticker.draw(canvas);
+//                if (isCropActive && handlingSticker != sticker) {
+//                    getStickerPoints(sticker, bitmapPoints);
+//                    drawBorder(canvas, bitmapPoints, R.color.enabled, 4);
+//                }
             }
         }
 
         if (handlingSticker != null && !isLocked && (showBorder || showIcons)) {
             getStickerPoints(handlingSticker, bitmapPoints);
-            if (handlingSticker != null && handlingSticker.isVisible()) {
+            if (handlingSticker != null) {
                 drawBorder(canvas, bitmapPoints, dashColor, 1);
             }
 
@@ -307,14 +313,6 @@ public class StickerView extends FrameLayout {
         gestureDetector.onTouchEvent(event);
     }
 
-    public void showCurrentSticker() {
-        handlingSticker.setVisible(true);
-    }
-
-    public void hideCurrentSticker() {
-        handlingSticker.setVisible(false);
-    }
-
     @NonNull
     public StickerView layoutSticker(@NonNull Sticker sticker) {
         return layoutSticker(sticker, Sticker.Position.CENTER);
@@ -381,7 +379,11 @@ public class StickerView extends FrameLayout {
     }
 
     public void setHandlingSticker(Sticker sticker) {
-        handlingSticker = sticker;
+        // Avoid system stickers to be set as active stickers.
+        if (stickers.contains(sticker)) {
+            handlingSticker = sticker;
+        }
+        invalidate();
         invalidate();
     }
 
@@ -581,6 +583,14 @@ public class StickerView extends FrameLayout {
     public void setStickers(List<Sticker> stickers) {
         this.stickers = stickers;
         this.handlingSticker = null;
+    }
+
+    public List<Sticker> getSystemStickers() {
+        return systemStickers;
+    }
+
+    public void setSystemStickers(List<Sticker> systemStickers) {
+        this.systemStickers = systemStickers;
     }
 
     public ObservableMatrix getCanvasMatrix() {

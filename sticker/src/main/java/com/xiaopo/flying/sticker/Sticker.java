@@ -34,7 +34,6 @@ public abstract class Sticker {
     protected RectF croppedBounds;
 
     private boolean visible = true;
-    private boolean editable = true;
 
     public Sticker() {}
 
@@ -44,7 +43,6 @@ public abstract class Sticker {
         this.realBounds = new Rect(other.realBounds);
         this.croppedBounds = new RectF(other.croppedBounds);
         this.visible = other.visible;
-        this.editable = other.editable;
     }
 
     public StickerTransform getTransform() {
@@ -375,22 +373,6 @@ public abstract class Sticker {
     }
 
     public void release() {
-    }
-
-    public boolean isVisible() {
-        return visible;
-    }
-
-    public void setVisible(boolean visible) {
-        this.visible = visible;
-    }
-
-    public boolean isEditable() {
-        return editable;
-    }
-
-    public void setEditable(boolean editable) {
-        this.editable = editable;
     }
 
     public Rect getRealBounds() {

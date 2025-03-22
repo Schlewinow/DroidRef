@@ -72,10 +72,6 @@ class StickerViewSerializer {
         val dedup: MutableMap<String, StickerMetadata> = mutableMapOf()
 
         viewModel.stickers.value!!.forEach {
-            if (!it.isEditable) {
-                return@forEach
-            }
-
             val drawableSticker = it as DrawableSticker
             val entry = Entry(
                 drawableSticker.getRealBounds(),
@@ -123,11 +119,15 @@ class StickerViewSerializer {
     }
 
     fun serialize(viewModel: StickerViewModel, file: File) {
+        serialize(viewModel, BufferedOutputStream(FileOutputStream(file)))
+    }
+
+    fun serialize(viewModel: StickerViewModel, outputStream: OutputStream) {
         val board = serializeViewModel(viewModel)
 
         // Why isn't there a maintained binary serialization library for Android? MoshiPack is
         // several Kotlin versions out of date, and Moshi is way too slow because it's JSON.
-        MessagePack.newDefaultPacker(BufferedOutputStream(FileOutputStream(file)))
+        MessagePack.newDefaultPacker(outputStream)
             .use { p ->
                 p.packInt(board.version)
                 p.packLong(board.date)
