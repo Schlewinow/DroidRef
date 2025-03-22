@@ -37,9 +37,6 @@ public class StickerView extends FrameLayout {
 
     private GestureDetector gestureDetector;
 
-    private final boolean showIcons;
-    private final boolean showBorder;
-
     @IntDef(flag = true, value = {FLIP_HORIZONTALLY, FLIP_VERTICALLY})
     @Retention(RetentionPolicy.SOURCE)
     public @interface Flip {
@@ -53,15 +50,13 @@ public class StickerView extends FrameLayout {
     private final List<BitmapStickerIcon> icons = new ArrayList<>(4);
     private final List<BitmapStickerIcon> rotateIcons = new ArrayList<>(2);
     private final List<BitmapStickerIcon> cropIcons = new ArrayList<>(4);
-    private ObservableField<List<BitmapStickerIcon>> activeIcons = new ObservableField<>(new ArrayList<>(4));
+    private final ObservableField<List<BitmapStickerIcon>> activeIcons = new ObservableField<>(new ArrayList<>(4));
 
     private final Paint borderPaint = new Paint();
     private final Paint iconPaint = new Paint();
     private final Paint auxiliaryLinePaint = new Paint();
 
     private final RectF stickerRect = new RectF();
-
-    private final Matrix sizeMatrix = new Matrix();
 
     private final ObservableMatrix canvasMatrix = new ObservableMatrix();
 
@@ -101,8 +96,6 @@ public class StickerView extends FrameLayout {
         TypedArray a = null;
         try {
             a = context.obtainStyledAttributes(attrs, R.styleable.StickerView);
-            showIcons = a.getBoolean(R.styleable.StickerView_showIcons, false);
-            showBorder = a.getBoolean(R.styleable.StickerView_showBorder, false);
             accentColor = a.getColor(R.styleable.StickerView_accentColor, Color.GRAY);
             dashColor = a.getColor(R.styleable.StickerView_dashColor, Color.GREEN);
 
@@ -204,12 +197,10 @@ public class StickerView extends FrameLayout {
 
         canvas.save();
         canvas.concat(canvasMatrix.getMatrix());
-        if (showBorder) {
-            canvas.drawLine(x1, y1, x2, y2, borderPaint);
-            canvas.drawLine(x1, y1, x3, y3, borderPaint);
-            canvas.drawLine(x2, y2, x4, y4, borderPaint);
-            canvas.drawLine(x4, y4, x3, y3, borderPaint);
-        }
+        canvas.drawLine(x1, y1, x2, y2, borderPaint);
+        canvas.drawLine(x1, y1, x3, y3, borderPaint);
+        canvas.drawLine(x2, y2, x4, y4, borderPaint);
+        canvas.drawLine(x4, y4, x3, y3, borderPaint);
 
         canvas.restore();
     }
@@ -226,70 +217,85 @@ public class StickerView extends FrameLayout {
             Sticker sticker = stickers.get(index);
             if (sticker != null) {
                 sticker.draw(canvas);
-//                if (isCropActive && handlingSticker != sticker) {
-//                    getStickerPoints(sticker, bitmapPoints);
-//                    drawBorder(canvas, bitmapPoints, R.color.enabled, 4);
-//                }
             }
         }
 
-        if (handlingSticker != null && !isLocked && (showBorder || showIcons)) {
+        drawStickerBorder(canvas);
+        drawStickerActionIcons(canvas);
+    }
+
+    /**
+     * Draw a border around the active sticker as visual indicator.
+     * @param canvas Canvas to draw the visual border to.
+     */
+    private void drawStickerBorder(Canvas canvas) {
+        if (handlingSticker != null && !isLocked) {
             getStickerPoints(handlingSticker, bitmapPoints);
             if (handlingSticker != null) {
                 drawBorder(canvas, bitmapPoints, dashColor, 1);
             }
+        }
+    }
 
-            //draw icons
-            if (showIcons) {
-                getStickerPointsCropped(handlingSticker, bitmapPoints);
-                float x1 = bitmapPoints[0];
-                float y1 = bitmapPoints[1];
-                float x2 = bitmapPoints[2];
-                float y2 = bitmapPoints[3];
-                float x3 = bitmapPoints[4];
-                float y3 = bitmapPoints[5];
-                float x4 = bitmapPoints[6];
-                float y4 = bitmapPoints[7];
+    /**
+     * Draw the icons at the edge of the active sticker which allow editing operations.
+     * @param canvas Canvas to draw the icons to.
+     */
+    private void drawStickerActionIcons(Canvas canvas) {
+        if (handlingSticker != null && !isLocked) {
+            List<BitmapStickerIcon> activeIconList = activeIcons.get();
+            if (activeIconList == null) {
+                return;
+            }
 
-                float rotation = StickerMath.calculateAngle(x4, y4, x3, y3);
+            getStickerPointsCropped(handlingSticker, bitmapPoints);
+            float x1 = bitmapPoints[0];
+            float y1 = bitmapPoints[1];
+            float x2 = bitmapPoints[2];
+            float y2 = bitmapPoints[3];
+            float x3 = bitmapPoints[4];
+            float y3 = bitmapPoints[5];
+            float x4 = bitmapPoints[6];
+            float y4 = bitmapPoints[7];
 
-                for (int i = 0; i < activeIcons.get().size(); i++) {
-                    BitmapStickerIcon icon = activeIcons.get().get(i);
-                    switch (icon.getPosition()) {
-                        case BitmapStickerIcon.LEFT_TOP:
-                            configIconMatrix(icon, x1, y1, rotation);
-                            break;
+            float rotation = StickerMath.calculateAngle(x4, y4, x3, y3);
 
-                        case BitmapStickerIcon.RIGHT_TOP:
-                            configIconMatrix(icon, x2, y2, rotation);
-                            break;
+            for (int i = 0; i < activeIconList.size(); i++) {
+                BitmapStickerIcon icon = activeIconList.get(i);
+                switch (icon.getPosition()) {
+                    case BitmapStickerIcon.LEFT_TOP:
+                        configIconMatrix(icon, x1, y1, rotation);
+                        break;
 
-                        case BitmapStickerIcon.LEFT_BOTTOM:
-                            configIconMatrix(icon, x3, y3, rotation);
-                            break;
+                    case BitmapStickerIcon.RIGHT_TOP:
+                        configIconMatrix(icon, x2, y2, rotation);
+                        break;
 
-                        case BitmapStickerIcon.RIGHT_BOTTOM:
-                            configIconMatrix(icon, x4, y4, rotation);
-                            break;
+                    case BitmapStickerIcon.LEFT_BOTTOM:
+                        configIconMatrix(icon, x3, y3, rotation);
+                        break;
 
-                        case BitmapStickerIcon.LEFT_CENTER:
-                            configIconMatrix(icon, (x1 + x3) / 2, (y1 + y3) / 2, rotation);
-                            break;
+                    case BitmapStickerIcon.RIGHT_BOTTOM:
+                        configIconMatrix(icon, x4, y4, rotation);
+                        break;
 
-                        case BitmapStickerIcon.RIGHT_CENTER:
-                            configIconMatrix(icon, (x2 + x4) / 2, (y2 + y4) / 2, rotation);
-                            break;
+                    case BitmapStickerIcon.LEFT_CENTER:
+                        configIconMatrix(icon, (x1 + x3) / 2, (y1 + y3) / 2, rotation);
+                        break;
 
-                        case BitmapStickerIcon.TOP_CENTER:
-                            configIconMatrix(icon, (x1 + x2) / 2, (y1 + y2) / 2, rotation);
-                            break;
+                    case BitmapStickerIcon.RIGHT_CENTER:
+                        configIconMatrix(icon, (x2 + x4) / 2, (y2 + y4) / 2, rotation);
+                        break;
 
-                        case BitmapStickerIcon.BOTTOM_CENTER:
-                            configIconMatrix(icon, (x3 + x4) / 2, (y3 + y4) / 2, rotation);
-                            break;
-                    }
-                    icon.draw(canvas, iconPaint);
+                    case BitmapStickerIcon.TOP_CENTER:
+                        configIconMatrix(icon, (x1 + x2) / 2, (y1 + y2) / 2, rotation);
+                        break;
+
+                    case BitmapStickerIcon.BOTTOM_CENTER:
+                        configIconMatrix(icon, (x3 + x4) / 2, (y3 + y4) / 2, rotation);
+                        break;
                 }
+                icon.draw(canvas, iconPaint);
             }
         }
     }
@@ -380,10 +386,9 @@ public class StickerView extends FrameLayout {
 
     public void setHandlingSticker(Sticker sticker) {
         // Avoid system stickers to be set as active stickers.
-        if (stickers.contains(sticker)) {
+        if (stickers.contains(sticker) || sticker == null) {
             handlingSticker = sticker;
         }
-        invalidate();
         invalidate();
     }
 

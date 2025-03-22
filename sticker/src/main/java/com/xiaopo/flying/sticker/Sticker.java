@@ -33,8 +33,6 @@ public abstract class Sticker {
     protected Rect realBounds;
     protected RectF croppedBounds;
 
-    private boolean visible = true;
-
     public Sticker() {}
 
     public Sticker(Sticker other) {
@@ -42,7 +40,6 @@ public abstract class Sticker {
         this.canvasMatrix.set(other.canvasMatrix);
         this.realBounds = new Rect(other.realBounds);
         this.croppedBounds = new RectF(other.croppedBounds);
-        this.visible = other.visible;
     }
 
     public StickerTransform getTransform() {

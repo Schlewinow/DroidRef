@@ -340,12 +340,12 @@ open class StickerViewModel :
         }
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                //                Timber.d("MotionEvent.ACTION_DOWN event__: %s", event.toString());
                 onStickerAreaTouchListener?.onStickerAreaTouch()
                 if (!onTouchDown(view, event)) {
                     return if (mustLockToPan.value != true) {
                         handleCanvasMotion(view, event)
-                    } else false
+                    }
+                    else false
                 }
             }
             MotionEvent.ACTION_POINTER_DOWN -> {
@@ -359,10 +359,12 @@ open class StickerViewModel :
                 if (!onTouchDown(view, event)) {
                     return if (mustLockToPan.value != true) {
                         handleCanvasMotion(view, event)
-                    } else false
+                    }
+                    else false
                 }
                 currentMode.value = ActionMode.DRAG
-            } else {
+            }
+            else {
                 currentMode.value = ActionMode.NONE
             }
         }
