@@ -25,14 +25,14 @@ public class StickerMath {
     /**
      * calculate rotation in line with two fingers and x-axis
      **/
-    public static float calculateRotation(@Nullable MotionEvent event) {
+    public static float calculateAngle(@Nullable MotionEvent event) {
         if (event == null || event.getPointerCount() < 2) {
             return 0f;
         }
-        return calculateRotation(event.getX(0), event.getY(0), event.getX(1), event.getY(1));
+        return calculateAngle(event.getX(0), event.getY(0), event.getX(1), event.getY(1));
     }
 
-    public static float calculateRotation(float x1, float y1, float x2, float y2) {
+    public static float calculateAngle(float x1, float y1, float x2, float y2) {
         double x = x1 - x2;
         double y = y1 - y2;
         double radians = java.lang.Math.atan2(y, x);

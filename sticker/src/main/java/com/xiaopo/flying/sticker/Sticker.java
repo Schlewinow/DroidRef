@@ -8,8 +8,6 @@ import androidx.annotation.IntRange;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import org.jetbrains.annotations.NotNull;
-
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
@@ -30,63 +28,51 @@ public abstract class Sticker {
         int BOTTOM = 1 << 4;
     }
 
-    private final float[] matrixValues = new float[9];
-    private final float[] unrotatedWrapperCorner = new float[8];
-    private final float[] unrotatedPoint = new float[2];
-    private final float[] boundPoints = new float[8];
-    private final float[] mappedBounds = new float[8];
-    private final RectF trappedRect = new RectF();
-    private final Matrix matrix = new Matrix();
+    private final StickerTransform transform = new StickerTransform(this);
     private final Matrix canvasMatrix = new Matrix();
-    private Matrix finalMatrix = new Matrix();
-    private boolean isFlippedHorizontally;
-    private boolean isFlippedVertically;
     protected Rect realBounds;
     protected RectF croppedBounds;
-
-    private boolean visible = true;
 
     public Sticker() {}
 
     public Sticker(Sticker other) {
-        this.matrix.set(other.matrix);
+        this.transform.copyFrom(other.transform);
         this.canvasMatrix.set(other.canvasMatrix);
         this.realBounds = new Rect(other.realBounds);
         this.croppedBounds = new RectF(other.croppedBounds);
-        this.isFlippedHorizontally = other.isFlippedHorizontally;
-        this.isFlippedVertically = other.isFlippedVertically;
+    }
 
-        this.recalcFinalMatrix();
+    public StickerTransform getTransform() {
+        return transform;
     }
 
     public boolean isFlippedHorizontally() {
-        return isFlippedHorizontally;
+        return transform.getScaling().x < 0f;
     }
 
     @NonNull
     public Sticker setFlippedHorizontally(boolean flippedHorizontally) {
-        isFlippedHorizontally = flippedHorizontally;
+        if (transform.getScaling().x > 0f && flippedHorizontally) {
+            transform.scale(-1f, 1f);
+        }
+        else if (transform.getScaling().x < 0f && !flippedHorizontally) {
+            transform.scale(-1f, 1f);
+        }
         return this;
     }
 
     public boolean isFlippedVertically() {
-        return isFlippedVertically;
+        return transform.getScaling().y < 0f;
     }
 
     @NonNull
     public Sticker setFlippedVertically(boolean flippedVertically) {
-        isFlippedVertically = flippedVertically;
-        return this;
-    }
-
-    @NonNull
-    public Matrix getMatrix() {
-        return matrix;
-    }
-
-    public Sticker setMatrix(@Nullable Matrix matrix) {
-        this.finalMatrix = null;
-        this.matrix.set(matrix);
+        if (transform.getScaling().y > 0f && flippedVertically) {
+            transform.scale(1f, -1f);
+        }
+        else if (transform.getScaling().y < 0f && !flippedVertically) {
+            transform.scale(1f, -1f);
+        }
         return this;
     }
 
@@ -96,21 +82,14 @@ public abstract class Sticker {
     }
 
     public Sticker setCanvasMatrix(@Nullable Matrix matrix) {
-        this.finalMatrix = null;
         this.canvasMatrix.set(matrix);
         return this;
     }
 
-    public void recalcFinalMatrix() {
-        if (finalMatrix == null) {
-            finalMatrix = new Matrix();
-        }
-        finalMatrix.setConcat(this.canvasMatrix, this.matrix);
-    }
-
     @NonNull
     public Matrix getFinalMatrix() {
-        recalcFinalMatrix();
+        Matrix finalMatrix = new Matrix();
+        finalMatrix.setConcat(canvasMatrix, transform.getMatrix());
         return finalMatrix;
     }
 
@@ -135,8 +114,8 @@ public abstract class Sticker {
     }
 
     public void getBoundPoints(@NonNull float[] points) {
-        if (!isFlippedHorizontally) {
-            if (!isFlippedVertically) {
+        if (!isFlippedHorizontally()) {
+            if (!isFlippedVertically()) {
                 points[0] = 0f;
                 points[1] = 0f;
                 points[2] = getWidth();
@@ -156,7 +135,7 @@ public abstract class Sticker {
                 points[7] = 0f;
             }
         } else {
-            if (!isFlippedVertically) {
+            if (!isFlippedVertically()) {
                 points[0] = getWidth();
                 points[1] = 0f;
                 points[2] = 0f;
@@ -185,8 +164,8 @@ public abstract class Sticker {
     }
 
     public void getCroppedBoundPoints(@NonNull float[] points) {
-        if (!isFlippedHorizontally) {
-            if (!isFlippedVertically) {
+        if (!isFlippedHorizontally()) {
+            if (!isFlippedVertically()) {
                 points[0] = croppedBounds.left;
                 points[1] = croppedBounds.top;
                 points[2] = croppedBounds.right;
@@ -206,7 +185,7 @@ public abstract class Sticker {
                 points[7] = croppedBounds.top;
             }
         } else {
-            if (!isFlippedVertically) {
+            if (!isFlippedVertically()) {
                 points[0] = croppedBounds.right;
                 points[1] = croppedBounds.top;
                 points[2] = croppedBounds.left;
@@ -237,19 +216,17 @@ public abstract class Sticker {
 
     @NonNull
     public float[] getMappedPoints(@NonNull float[] src) {
-        recalcFinalMatrix();
         float[] dst = new float[src.length];
-        finalMatrix.mapPoints(dst, src);
+        getFinalMatrix().mapPoints(dst, src);
         return dst;
     }
 
     public void getMappedPoints(@NonNull float[] dst, @NonNull float[] src) {
-        recalcFinalMatrix();
-        finalMatrix.mapPoints(dst, src);
+        getFinalMatrix().mapPoints(dst, src);
     }
 
     public void getMappedPointsPre(@NonNull float[] dst, @NonNull float[] src) {
-        matrix.mapPoints(dst, src);
+        transform.getMatrix().mapPoints(dst, src);
     }
 
     @NonNull
@@ -271,8 +248,7 @@ public abstract class Sticker {
     }
 
     public void getMappedBound(@NonNull RectF dst, @NonNull RectF bound) {
-        recalcFinalMatrix();
-        finalMatrix.mapRect(dst, bound);
+        getFinalMatrix().mapRect(dst, bound);
     }
 
     @NonNull
@@ -283,8 +259,7 @@ public abstract class Sticker {
     }
 
     public void getMappedBoundPre(@NonNull RectF dst, @NonNull RectF bound) {
-        recalcFinalMatrix();
-        finalMatrix.mapRect(dst, bound);
+        getFinalMatrix().mapRect(dst, bound);
     }
 
     @NonNull
@@ -336,85 +311,65 @@ public abstract class Sticker {
         dst.set(mappedPoints[0], mappedPoints[1]);
     }
 
-    public float getCurrentScale() {
-        return getMatrixScale(matrix);
+    public PointF getCurrentScale() {
+        return new PointF(transform.getScaling().x, transform.getScaling().y);
     }
 
     public float getCurrentHeight() {
-        return getMatrixScale(matrix) * getHeight();
+        return transform.getScaling().y * getHeight();
     }
 
     public float getCurrentWidth() {
-        return getMatrixScale(matrix) * getWidth();
+        return transform.getScaling().x * getWidth();
     }
 
-    /**
-     * This method calculates scale value for given Matrix object.
-     */
-    public float getMatrixScale(@NonNull Matrix matrix) {
-        return (float) Math.sqrt(Math.pow(getMatrixValue(matrix, Matrix.MSCALE_X), 2) + Math.pow(
-                getMatrixValue(matrix, Matrix.MSKEW_Y), 2));
-    }
-
-    /**
-     * @return - current image rotation angle.
-     */
-    public float getCurrentAngle() {
-        return getMatrixAngle(matrix);
-    }
-
-    /**
-     * This method calculates rotation angle for given Matrix object.
-     */
-    public float getMatrixAngle(@NonNull Matrix matrix) {
-        return (float) Math.toDegrees(-(Math.atan2(getMatrixValue(matrix, Matrix.MSKEW_X),
-                Math.abs(getMatrixValue(matrix, Matrix.MSCALE_X)))));
-    }
-
-    public float getMatrixValue(@NonNull Matrix matrix, @IntRange(from = 0, to = 9) int valueIndex) {
-        matrix.getValues(matrixValues);
-        return matrixValues[valueIndex];
-    }
-
+    // Used by StickerViewModel.
     public boolean contains(float x, float y) {
         return contains(new float[]{x, y});
     }
 
     public boolean contains(@NonNull float[] point) {
+        float[] boundPoints = new float[8];
+        float[] mappedBounds = new float[8];
+        RectF trappedRect = new RectF();
+        float[] unrotatedWrapperCorner = new float[8];
+        float[] unrotatedPoint = new float[2];
         Matrix tempMatrix = new Matrix();
-        tempMatrix.setRotate(-getCurrentAngle());
+        tempMatrix.setRotate(-transform.getRotation());
+
         getBoundPoints(boundPoints);
         getMappedPoints(mappedBounds, boundPoints);
         tempMatrix.mapPoints(unrotatedWrapperCorner, mappedBounds);
         tempMatrix.mapPoints(unrotatedPoint, point);
         StickerUtils.trapToRect(trappedRect, unrotatedWrapperCorner);
+
         return trappedRect.contains(unrotatedPoint[0], unrotatedPoint[1]);
     }
 
+    // Used by StickerViewModel.
     public boolean containsCropped(float x, float y) {
         return contains(new float[]{x, y});
     }
 
     public boolean containsCropped(@NonNull float[] point) {
-        Matrix tempMatrix = new Matrix();
-        tempMatrix.setRotate(-getCurrentAngle());
+        float[] boundPoints = new float[8];
+        float[] mappedBounds = new float[8];
+        RectF trappedRect = new RectF();
+        float[] unrotatedWrapperCorner = new float[8];
+        float[] unrotatedPoint = new float[2];
         getCroppedBoundPoints(boundPoints);
         getMappedPoints(mappedBounds, boundPoints);
+
+        Matrix tempMatrix = new Matrix();
+        tempMatrix.setRotate(-transform.getRotation());
         tempMatrix.mapPoints(unrotatedWrapperCorner, mappedBounds);
         tempMatrix.mapPoints(unrotatedPoint, point);
         StickerUtils.trapToRect(trappedRect, unrotatedWrapperCorner);
+
         return trappedRect.contains(unrotatedPoint[0], unrotatedPoint[1]);
     }
 
     public void release() {
-    }
-
-    public boolean isVisible() {
-        return visible;
-    }
-
-    public void setVisible(boolean visible) {
-        this.visible = visible;
     }
 
     public Rect getRealBounds() {

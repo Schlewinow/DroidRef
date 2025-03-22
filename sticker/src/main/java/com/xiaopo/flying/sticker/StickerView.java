@@ -13,7 +13,6 @@ import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.view.ViewCompat;
-import androidx.databinding.ObservableArrayList;
 import androidx.databinding.ObservableField;
 
 import com.xiaopo.flying.sticker.iconEvents.CropIconEvent;
@@ -29,8 +28,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import timber.log.Timber;
-
 /**
  * Sticker View
  *
@@ -39,9 +36,6 @@ import timber.log.Timber;
 public class StickerView extends FrameLayout {
 
     private GestureDetector gestureDetector;
-
-    private final boolean showIcons;
-    private final boolean showBorder;
 
     @IntDef(flag = true, value = {FLIP_HORIZONTALLY, FLIP_VERTICALLY})
     @Retention(RetentionPolicy.SOURCE)
@@ -52,17 +46,17 @@ public class StickerView extends FrameLayout {
     public static final int FLIP_VERTICALLY = 1 << 1;
 
     private List<Sticker> stickers = new ArrayList<>();
+    private List<Sticker> systemStickers = new ArrayList<>();
     private final List<BitmapStickerIcon> icons = new ArrayList<>(4);
+    private final List<BitmapStickerIcon> rotateIcons = new ArrayList<>(2);
     private final List<BitmapStickerIcon> cropIcons = new ArrayList<>(4);
-    private ObservableField<List<BitmapStickerIcon>> activeIcons = new ObservableField<>(new ArrayList<>(4));
+    private final ObservableField<List<BitmapStickerIcon>> activeIcons = new ObservableField<>(new ArrayList<>(4));
 
     private final Paint borderPaint = new Paint();
     private final Paint iconPaint = new Paint();
     private final Paint auxiliaryLinePaint = new Paint();
 
     private final RectF stickerRect = new RectF();
-
-    private final Matrix sizeMatrix = new Matrix();
 
     private final ObservableMatrix canvasMatrix = new ObservableMatrix();
 
@@ -102,8 +96,6 @@ public class StickerView extends FrameLayout {
         TypedArray a = null;
         try {
             a = context.obtainStyledAttributes(attrs, R.styleable.StickerView);
-            showIcons = a.getBoolean(R.styleable.StickerView_showIcons, false);
-            showBorder = a.getBoolean(R.styleable.StickerView_showBorder, false);
             accentColor = a.getColor(R.styleable.StickerView_accentColor, Color.GRAY);
             dashColor = a.getColor(R.styleable.StickerView_dashColor, Color.GREEN);
 
@@ -133,22 +125,29 @@ public class StickerView extends FrameLayout {
     }
 
     public void configDefaultIcons() {
-        BitmapStickerIcon deleteIcon = new BitmapStickerIcon(
-                getContext(), R.drawable.ic_close, BitmapStickerIcon.LEFT_TOP);
+        BitmapStickerIcon deleteIcon = new BitmapStickerIcon(getContext(), R.drawable.ic_close, BitmapStickerIcon.LEFT_TOP);
         deleteIcon.setIconEvent(new DeleteIconEvent());
 
-        BitmapStickerIcon zoomIcon = new BitmapStickerIcon(
-                getContext(), R.drawable.ic_scale, BitmapStickerIcon.RIGHT_BOTTOM);
+        BitmapStickerIcon zoomIcon = new BitmapStickerIcon(getContext(), R.drawable.ic_scale, BitmapStickerIcon.RIGHT_BOTTOM);
         zoomIcon.setIconEvent(new ZoomIconEvent());
 
-        BitmapStickerIcon flipIcon = new BitmapStickerIcon(
-                getContext(), R.drawable.ic_flip, BitmapStickerIcon.RIGHT_TOP);
+        BitmapStickerIcon flipIcon = new BitmapStickerIcon(getContext(), R.drawable.ic_flip, BitmapStickerIcon.RIGHT_TOP);
         flipIcon.setIconEvent(new FlipHorizontallyEvent());
 
         icons.clear();
         icons.add(deleteIcon);
         icons.add(zoomIcon);
         icons.add(flipIcon);
+
+        BitmapStickerIcon rotateDeleteIcon = new BitmapStickerIcon(getContext(), R.drawable.ic_close, BitmapStickerIcon.LEFT_TOP);
+        deleteIcon.setIconEvent(new DeleteIconEvent());
+
+        BitmapStickerIcon rotateIcon = new BitmapStickerIcon(getContext(), R.drawable.ic_scale, BitmapStickerIcon.RIGHT_BOTTOM);
+        zoomIcon.setIconEvent(new ZoomIconEvent());
+
+        rotateIcons.clear();
+        rotateIcons.add(rotateDeleteIcon);
+        rotateIcons.add(rotateIcon);
 
         BitmapStickerIcon cropLeftTop = new BitmapStickerIcon(getContext(), R.drawable.scale_1, BitmapStickerIcon.LEFT_TOP);
         cropLeftTop.setIconEvent(new CropIconEvent(BitmapStickerIcon.LEFT_TOP));
@@ -198,112 +197,126 @@ public class StickerView extends FrameLayout {
 
         canvas.save();
         canvas.concat(canvasMatrix.getMatrix());
-        if (showBorder) {
-            canvas.drawLine(x1, y1, x2, y2, borderPaint);
-            canvas.drawLine(x1, y1, x3, y3, borderPaint);
-            canvas.drawLine(x2, y2, x4, y4, borderPaint);
-            canvas.drawLine(x4, y4, x3, y3, borderPaint);
-        }
-
-        float rotation = StickerMath.calculateRotation(x4, y4, x3, y3);
-        float roundedRotation = roundOff(rotation);
+        canvas.drawLine(x1, y1, x2, y2, borderPaint);
+        canvas.drawLine(x1, y1, x3, y3, borderPaint);
+        canvas.drawLine(x2, y2, x4, y4, borderPaint);
+        canvas.drawLine(x4, y4, x3, y3, borderPaint);
 
         canvas.restore();
     }
 
     protected void drawStickers(Canvas canvas) {
-        for (int i = 0; i < stickers.size(); i++) {
-            Sticker sticker = stickers.get(i);
+        for (int index = 0; index < systemStickers.size(); index++) {
+            Sticker sticker = systemStickers.get(index);
             if (sticker != null) {
-                if (sticker.isVisible()) {
-                    sticker.draw(canvas);
-//                    if (isCropActive && handlingSticker != sticker) {
-//                        getStickerPoints(sticker, bitmapPoints);
-//                        drawBorder(canvas, bitmapPoints, R.color.enabled, 4);
-//                    }
-                }
+                sticker.draw(canvas);
             }
         }
 
-        if (handlingSticker != null && !isLocked && (showBorder || showIcons)) {
+        for (int index = 0; index < stickers.size(); index++) {
+            Sticker sticker = stickers.get(index);
+            if (sticker != null) {
+                sticker.draw(canvas);
+            }
+        }
+
+        drawStickerBorder(canvas);
+        drawStickerActionIcons(canvas);
+    }
+
+    /**
+     * Draw a border around the active sticker as visual indicator.
+     * @param canvas Canvas to draw the visual border to.
+     */
+    private void drawStickerBorder(Canvas canvas) {
+        if (handlingSticker != null && !isLocked) {
             getStickerPoints(handlingSticker, bitmapPoints);
-            if (handlingSticker != null && handlingSticker.isVisible()) {
+            if (handlingSticker != null) {
                 drawBorder(canvas, bitmapPoints, dashColor, 1);
             }
-
-            //draw icons
-            if (showIcons) {
-                getStickerPointsCropped(handlingSticker, bitmapPoints);
-                float x1 = bitmapPoints[0];
-                float y1 = bitmapPoints[1];
-                float x2 = bitmapPoints[2];
-                float y2 = bitmapPoints[3];
-                float x3 = bitmapPoints[4];
-                float y3 = bitmapPoints[5];
-                float x4 = bitmapPoints[6];
-                float y4 = bitmapPoints[7];
-
-                float rotation = StickerMath.calculateRotation(x4, y4, x3, y3);
-
-                for (int i = 0; i < activeIcons.get().size(); i++) {
-                    BitmapStickerIcon icon = activeIcons.get().get(i);
-                    switch (icon.getPosition()) {
-                        case BitmapStickerIcon.LEFT_TOP:
-                            configIconMatrix(icon, x1, y1, rotation);
-                            break;
-
-                        case BitmapStickerIcon.RIGHT_TOP:
-                            configIconMatrix(icon, x2, y2, rotation);
-                            break;
-
-                        case BitmapStickerIcon.LEFT_BOTTOM:
-                            configIconMatrix(icon, x3, y3, rotation);
-                            break;
-
-                        case BitmapStickerIcon.RIGHT_BOTTOM:
-                            configIconMatrix(icon, x4, y4, rotation);
-                            break;
-                    }
-                    icon.draw(canvas, iconPaint);
-                }
-            }
         }
     }
 
-    private float roundOff(float rotation) {
-        return Math.round(rotation * 100f) / 100f;
-    }
+    /**
+     * Draw the icons at the edge of the active sticker which allow editing operations.
+     * @param canvas Canvas to draw the icons to.
+     */
+    private void drawStickerActionIcons(Canvas canvas) {
+        if (handlingSticker != null && !isLocked) {
+            List<BitmapStickerIcon> activeIconList = activeIcons.get();
+            if (activeIconList == null) {
+                return;
+            }
 
-    public static float midValue(float n1, float n2) {
-        return n1 / 2 + n2 / 2 + (n1 % 2 + n2 % 2) / 2;
+            getStickerPointsCropped(handlingSticker, bitmapPoints);
+            float x1 = bitmapPoints[0];
+            float y1 = bitmapPoints[1];
+            float x2 = bitmapPoints[2];
+            float y2 = bitmapPoints[3];
+            float x3 = bitmapPoints[4];
+            float y3 = bitmapPoints[5];
+            float x4 = bitmapPoints[6];
+            float y4 = bitmapPoints[7];
+
+            float rotation = StickerMath.calculateAngle(x4, y4, x3, y3);
+
+            for (int i = 0; i < activeIconList.size(); i++) {
+                BitmapStickerIcon icon = activeIconList.get(i);
+                switch (icon.getPosition()) {
+                    case BitmapStickerIcon.LEFT_TOP:
+                        configIconMatrix(icon, x1, y1, rotation);
+                        break;
+
+                    case BitmapStickerIcon.RIGHT_TOP:
+                        configIconMatrix(icon, x2, y2, rotation);
+                        break;
+
+                    case BitmapStickerIcon.LEFT_BOTTOM:
+                        configIconMatrix(icon, x3, y3, rotation);
+                        break;
+
+                    case BitmapStickerIcon.RIGHT_BOTTOM:
+                        configIconMatrix(icon, x4, y4, rotation);
+                        break;
+
+                    case BitmapStickerIcon.LEFT_CENTER:
+                        configIconMatrix(icon, (x1 + x3) / 2, (y1 + y3) / 2, rotation);
+                        break;
+
+                    case BitmapStickerIcon.RIGHT_CENTER:
+                        configIconMatrix(icon, (x2 + x4) / 2, (y2 + y4) / 2, rotation);
+                        break;
+
+                    case BitmapStickerIcon.TOP_CENTER:
+                        configIconMatrix(icon, (x1 + x2) / 2, (y1 + y2) / 2, rotation);
+                        break;
+
+                    case BitmapStickerIcon.BOTTOM_CENTER:
+                        configIconMatrix(icon, (x3 + x4) / 2, (y3 + y4) / 2, rotation);
+                        break;
+                }
+                icon.draw(canvas, iconPaint);
+            }
+        }
     }
 
     protected void configIconMatrix(@NonNull BitmapStickerIcon icon, float x, float y, float rotation) {
         icon.setX(x);
         icon.setY(y);
-        icon.getMatrix().reset();
+        icon.getTransform().reset();
 
-        icon.getMatrix().postRotate(rotation, icon.getWidth() / 2f, icon.getHeight() / 2f);
-        icon.getMatrix().postTranslate(x - icon.getWidth() / 2f, y - icon.getHeight() / 2f);
+        icon.getTransform().rotate(rotation);
+        icon.getTransform().translate(x - icon.getWidth() / 2f, y - icon.getHeight() / 2f);
         icon.setCanvasMatrix(canvasMatrix.getMatrix());
         Matrix a = new Matrix();
         canvasMatrix.invert(a);
         float radius = a.mapRadius(BitmapStickerIcon.DEFAULT_ICON_RADIUS);
         icon.setIconRadius(radius);
-        icon.getMatrix().postScale(radius / BitmapStickerIcon.DEFAULT_ICON_RADIUS, radius / BitmapStickerIcon.DEFAULT_ICON_RADIUS, x, y);
-        icon.recalcFinalMatrix();
+        icon.getTransform().scale(radius / BitmapStickerIcon.DEFAULT_ICON_RADIUS, radius / BitmapStickerIcon.DEFAULT_ICON_RADIUS);
     }
 
     public void detectIconGesture(@NotNull MotionEvent event) {
         gestureDetector.onTouchEvent(event);
-    }
-
-    public void showCurrentSticker() {
-        handlingSticker.setVisible(true);
-    }
-
-    public void hideCurrentSticker() {
-        handlingSticker.setVisible(false);
     }
 
     @NonNull
@@ -322,9 +335,7 @@ public class StickerView extends FrameLayout {
     }
 
     private PointF getScaledSize(Sticker sticker) {
-        float screenX = 0;
-        float screenY = 0;
-        float temp[] = {sticker.getWidth(), sticker.getHeight()};
+        float[] temp = {sticker.getWidth(), sticker.getHeight()};
         sticker.getFinalMatrix().mapVectors(temp);
         float sw = temp[0];
         float sh = temp[1];
@@ -332,27 +343,14 @@ public class StickerView extends FrameLayout {
     }
 
     protected void layoutStickerImmediately(@NonNull Sticker sticker, @Sticker.Position int position) {
-        sticker.getMatrix().reset();
-        sticker.recalcFinalMatrix();
+        sticker.getTransform().reset();
 
-        float scaleFactor, widthScaleFactor, heightScaleFactor;
-        float[] worldSize = {getWidth(), getHeight()};
+        float[] worldSize = { getWidth(), getHeight() };
         Matrix a = new Matrix();
         canvasMatrix.invert(a);
         a.mapVectors(worldSize);
-        float worldWidth = worldSize[0];
-        float worldHeight = worldSize[1];
-
-        PointF scaled = getScaledSize(sticker);
-
-        widthScaleFactor = (float)sticker.getWidth() / scaled.x;
-        heightScaleFactor = (float)sticker.getHeight() / scaled.y;
-        scaleFactor = Math.min(widthScaleFactor, heightScaleFactor);
-        //sticker.getMatrix().postScale(scaleFactor / 2, scaleFactor / 2);
-        sticker.recalcFinalMatrix();
 
         setStickerPosition(sticker, position);
-
         setHandlingSticker(sticker);
     }
 
@@ -379,7 +377,7 @@ public class StickerView extends FrameLayout {
         Matrix a = new Matrix();
         sticker.getFinalMatrix().invert(a);
         a.mapPoints(temp2);
-        sticker.getMatrix().setTranslate(temp2[0], temp2[1]);
+        sticker.getTransform().setPosition(temp2[0], temp2[1]);
     }
 
     public Sticker getHandlingSticker() {
@@ -387,7 +385,10 @@ public class StickerView extends FrameLayout {
     }
 
     public void setHandlingSticker(Sticker sticker) {
-        handlingSticker = sticker;
+        // Avoid system stickers to be set as active stickers.
+        if (stickers.contains(sticker) || sticker == null) {
+            handlingSticker = sticker;
+        }
         invalidate();
     }
 
@@ -442,12 +443,9 @@ public class StickerView extends FrameLayout {
     @NonNull
     public StickerView setRotationEnabled(boolean rotationEnabled) {
         this.rotationEnabled = rotationEnabled;
+        updateIcons();
         invalidate();
         return this;
-    }
-
-    public boolean isMustLockToPan() {
-        return mustLockToPan;
     }
 
     public boolean isCropActive() {
@@ -460,6 +458,10 @@ public class StickerView extends FrameLayout {
         updateIcons();
         invalidate();
         return this;
+    }
+
+    public boolean isMustLockToPan() {
+        return mustLockToPan;
     }
 
     @NonNull
@@ -497,11 +499,39 @@ public class StickerView extends FrameLayout {
         invalidate();
     }
 
+    @NonNull
+    public List<BitmapStickerIcon> getRotateIcons() {
+        return rotateIcons;
+    }
+
+    public void setRotateIcons(@NonNull List<BitmapStickerIcon> rotateIcons) {
+        this.rotateIcons.clear();
+        this.rotateIcons.addAll(rotateIcons);
+        updateIcons();
+        invalidate();
+    }
+
+    @NotNull
+    public List<BitmapStickerIcon> getCropIcons() {
+        return cropIcons;
+    }
+
+    public void setCropIcons(@NonNull List<BitmapStickerIcon> cropIcons) {
+        this.cropIcons.clear();
+        this.cropIcons.addAll(cropIcons);
+        updateIcons();
+        invalidate();
+    }
+
     private void updateIcons() {
         this.currentIcon = null;
         if (isCropActive) {
             setActiveIcons(cropIcons);
-        } else {
+        }
+        else if (rotationEnabled) {
+            setActiveIcons(rotateIcons);
+        }
+        else {
             setActiveIcons(icons);
         }
     }
@@ -558,6 +588,14 @@ public class StickerView extends FrameLayout {
     public void setStickers(List<Sticker> stickers) {
         this.stickers = stickers;
         this.handlingSticker = null;
+    }
+
+    public List<Sticker> getSystemStickers() {
+        return systemStickers;
+    }
+
+    public void setSystemStickers(List<Sticker> systemStickers) {
+        this.systemStickers = systemStickers;
     }
 
     public ObservableMatrix getCanvasMatrix() {

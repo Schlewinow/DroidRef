@@ -61,6 +61,12 @@ object StickerViewBindingAdapters {
     }
 
     @JvmStatic
+    @BindingAdapter("systemStickers")
+    fun setSystemStickers(view: StickerView, value: List<Sticker>) {
+        view.systemStickers = value
+    }
+
+    @JvmStatic
     @BindingAdapter("activeIcons")
     fun setActiveIcons(view: StickerView, value: List<BitmapStickerIcon>) {
         view.setActiveIcons(value)
@@ -95,6 +101,18 @@ object StickerViewBindingAdapters {
     @BindingAdapter("icons")
     fun setIcons(view: StickerView, value: List<BitmapStickerIcon>) {
         view.icons = value
+    }
+
+    @JvmStatic
+    @BindingAdapter("rotateIcons")
+    fun setRotateIcons(view: StickerView, value: List<BitmapStickerIcon>) {
+        view.rotateIcons = value
+    }
+
+    @JvmStatic
+    @BindingAdapter("cropIcons")
+    fun setCropIcons(view: StickerView, value: List<BitmapStickerIcon>) {
+        view.cropIcons = value
     }
 
     @JvmStatic
