@@ -46,11 +46,11 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         // While reference board is showing, keep the screen turned on.
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
 
-        stickerViewModel = ViewModelProvider(this).get(StickerViewModel::class.java)
+        stickerViewModel = ViewModelProvider(this)[StickerViewModel::class.java]
         stickerViewModel.stickerOperationListener = RefBoardStickerOperationListener(binding)
         binding.viewModel = stickerViewModel
         binding.executePendingBindings()
