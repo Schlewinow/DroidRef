@@ -3,12 +3,12 @@ apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-kapt'
 
 android {
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         applicationId "xyz.ruin.droidref"
         minSdk 23
-        targetSdk 35
+        targetSdk 36
         versionCode 4
         versionName "1.2.0"
 
